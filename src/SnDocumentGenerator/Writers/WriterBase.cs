@@ -219,4 +219,3 @@ namespace SnDocumentGenerator.Writers
         }
     }
 }
-// sensenet__Authetnicatin__Authority="value"
