@@ -61,7 +61,7 @@ namespace SnDocumentGenerator
         }
 
         public string ProjectName => Project?.Name ?? "";
-        public ProjectType ProjectType => Project?.Type ?? SnDocumentGenerator.ProjectType.Unknown;
+        public ProjectType ProjectType => Project?.Type ?? ProjectType.Unknown;
 
         private string CR = Environment.NewLine;
 

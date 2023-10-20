@@ -8,7 +8,7 @@ namespace SnDocumentGenerator.Parser
 {
     internal class OperationParser
     {
-        private Options _options;
+        private readonly Options _options;
 
         public OperationParser(Options options)
         {
@@ -118,11 +118,11 @@ namespace SnDocumentGenerator.Parser
         private ProjectType GetProjectType(string typeName)
         {
             if (typeName.StartsWith("netcoreapp"))
-                return ProjectType.NETCore;
+                return ProjectType.NetCore;
             if (typeName.StartsWith("netstandard"))
-                return ProjectType.NETStandard;
+                return ProjectType.NetStandard;
             if (typeName.StartsWith("netframework"))
-                return ProjectType.NETFramework;
+                return ProjectType.NetFramework;
             return ProjectType.Unknown;
         }
 

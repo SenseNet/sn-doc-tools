@@ -12,7 +12,7 @@ namespace SnDocumentGenerator.Parser
         private readonly string[] _expectedModifiers = new[] { "public", "static" };
 
         private string _currentAttributeName;
-        public OperationInfo Operation { get; } = new OperationInfo();
+        public OperationInfo Operation { get; } = new();
 
         public ODataOperationWalker(bool showAst) : base(showAst)
         {

@@ -4,9 +4,7 @@
     {
         public static string FormatType(this string src)
         {
-            if(src.Contains('<'))
-                return $"`{src}`";
-            return src;
+            return src.Contains('<') ? $"`{src}`" : src;
         }
     }
 }

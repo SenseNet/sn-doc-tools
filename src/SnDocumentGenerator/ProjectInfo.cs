@@ -2,7 +2,7 @@
 
 namespace SnDocumentGenerator
 {
-    public enum ProjectType { Unknown, NETStandard, NETCore, NETFramework }
+    public enum ProjectType { Unknown, NetStandard, NetCore, NetFramework }
 
     [DebuggerDisplay("{Name} ({TypeName})")]
     public class ProjectInfo

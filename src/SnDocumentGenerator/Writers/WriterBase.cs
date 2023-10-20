@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace SnDocumentGenerator.Writers
 {
@@ -210,5 +208,14 @@ namespace SnDocumentGenerator.Writers
             return "_value_";
         }
 
+        protected void WriteEnvironmentVariablesExample(OptionsClassInfo oc, TextWriter output)
+        {
+            output.WriteLine("### Environment variables example:");
+            output.WriteLine("```");
+            var prefix = oc.ConfigSection.Replace(":", "__");
+            foreach (var prop in oc.Properties)
+                output.WriteLine($"--{prefix}__{prop.Name} {GetPropertyExample(prop)}");
+            output.WriteLine("```");
+        }
     }
 }

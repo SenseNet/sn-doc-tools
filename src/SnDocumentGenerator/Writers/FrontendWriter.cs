@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace SnDocumentGenerator.Writers
 {
@@ -59,10 +56,9 @@ namespace SnDocumentGenerator.Writers
                 }
                 else if (options.FileLevel == FileLevel.OperationNoCategories)
                 {
-                    output.WriteLine("| {0} | [{1}](/restapi/{3}) | {4} |",
+                    output.WriteLine("| {0} | [{1}](/restapi/{2}) | {3} |",
                         op.Category,
                         op.OperationName,
-                        op.CategoryInLink,
                         op.OperationNameInLink,
                         op.IsAction ? "POST" : "GET");
                 }
@@ -106,10 +102,9 @@ namespace SnDocumentGenerator.Writers
                 }
                 else if (options.FileLevel == FileLevel.OperationNoCategories)
                 {
-                    output.WriteLine("| {0} | [{1}](/options/{3}) | {4} |",
+                    output.WriteLine("| {0} | [{1}](/options/{2}) | {3} |",
                         op.Category,
                         op.ClassName,
-                        op.CategoryInLink,
                         op.ClassNameInLink,
                         op.ConfigSection);
                 }
@@ -169,9 +164,9 @@ namespace SnDocumentGenerator.Writers
             var json = JsonSerializer.Serialize(example, new JsonSerializerOptions{WriteIndented = true});
             output.WriteLine($"## {title} ({ocs.Length} sections)");
             output.WriteLine("**WARNING** This is a sample configuration containing example values. Do not use it without modifying it to reflect your environment.");
-            output.WriteLine($"``` json");
+            output.WriteLine("``` json");
             output.WriteLine(json);
-            output.WriteLine($"```");
+            output.WriteLine("```");
         }
 
         private Dictionary<string, object> CreateOptionsExample(OptionsClassInfo[] ocs)
@@ -219,9 +214,8 @@ namespace SnDocumentGenerator.Writers
         public override void WriteOperation(OperationInfo op, TextWriter output, Options options)
         {
             output.WriteLine("## {0}", op.OperationName);
-            List<string> head;
 
-            head = new List<string>
+            var head = new List<string>
             {
                 //op.IsAction ? "- Type: **ACTION**" : "- Type: **FUNCTION**"
                 op.IsAction 
@@ -300,6 +294,8 @@ namespace SnDocumentGenerator.Writers
             output.WriteLine();
 
             WriteOptionsExample(oc, output);
+
+            WriteEnvironmentVariablesExample(oc, output);
 
             output.WriteLine("### Properties:");
                 foreach (var prop in oc.Properties)
@@ -495,7 +491,7 @@ namespace SnDocumentGenerator.Writers
 
             //if (type.Contains("<"))
                 return $"`{type}`";
-            return type;
+            //return type;
         }
 
     }

@@ -40,8 +40,6 @@ namespace SnDocumentGenerator
 
         private static void Run(Options options)
         {
-            var fileWriters = new Dictionary<string, TextWriter>();
-
             var parser = new OperationParser(options);
             var parserResult =  parser.Parse();
             var operations = parserResult.Operations;
@@ -55,10 +53,10 @@ namespace SnDocumentGenerator
                 .ToList();
 
             var testOps = operations.Where(o => o.Project?.IsTestProject ?? true).ToArray();
-            var fwOps = operations.Where(o => o.ProjectType == ProjectType.NETFramework || o.ProjectType == ProjectType.Unknown).ToArray();
+            var fwOps = operations.Where(o => o.ProjectType == ProjectType.NetFramework || o.ProjectType == ProjectType.Unknown).ToArray();
             var coreOps = operations.Except(testOps).Except(fwOps).ToArray();
 
-            SetOperationLinks(options.All ? (IEnumerable<OperationInfo>)operations : coreOps);
+            SetOperationLinks(options.All ? operations : coreOps);
 
             using (var writer = new StreamWriter(Path.Combine(options.Output, "generation.txt"), false))
                 WriteGenerationInfo(writer, options, operations, coreOps, optionsClasses);

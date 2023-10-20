@@ -47,9 +47,8 @@ namespace SnDocumentGenerator.Writers
                 }
                 else if (options.FileLevel == FileLevel.OperationNoCategories)
                 {
-                    output.WriteLine("| [{0}](/restapi/{2}) | {3} | {4} | {5} | {6} | {7} | {8} |",
+                    output.WriteLine("| [{0}](/restapi/{1}) | {2} | {3} | {4} | {5} | {6} | {7} |",
                         op.OperationName,
-                        op.CategoryInLink,
                         op.OperationNameInLink,
                         op.Category,
                         op.IsAction ? "Action" : "Function",
@@ -102,9 +101,8 @@ namespace SnDocumentGenerator.Writers
                 }
                 else if (options.FileLevel == FileLevel.OperationNoCategories)
                 {
-                    output.WriteLine("| [{0}](/options/{2}) | {3} | {4} | {5} | {6} | {7} |",
+                    output.WriteLine("| [{0}](/options/{1}) | {2} | {3} | {4} | {5} | {6} |",
                         oc.ClassName,
-                        oc.CategoryInLink,
                         oc.ClassNameInLink,
                         oc.Category,
                         oc.GithubRepository,
@@ -122,20 +120,19 @@ namespace SnDocumentGenerator.Writers
         public override void WriteTree(string title, OperationInfo[] ops, TextWriter output, Options options)
         {
             output.WriteLine($"## {title} ({ops.Length})");
-            output.WriteLine($"### ... coming soon.");
+            output.WriteLine("### ... coming soon.");
         }
         public override void WriteTree(string title, OptionsClassInfo[] ocs, TextWriter output, Options options)
         {
             output.WriteLine($"## {title} ({ocs.Length} classes)");
-            output.WriteLine($"### ... coming soon.");
+            output.WriteLine("### ... coming soon.");
         }
 
         public override void WriteOperation(OperationInfo op, TextWriter output, Options options)
         {
             output.WriteLine("## {0}", op.OperationName);
-            List<string> head;
 
-            head = new List<string>
+            var head = new List<string>
             {
                 op.IsAction ? "- Type: **ACTION**" : "- Type: **FUNCTION**",
                 $"- Repository: **{op.GithubRepository}**",
@@ -189,9 +186,8 @@ namespace SnDocumentGenerator.Writers
         public override void WriteOptionClass(OptionsClassInfo oc, TextWriter output, Options options)
         {
             output.WriteLine("## {0}", oc.ClassName);
-            List<string> head;
 
-            head = new List<string>
+            var head = new List<string>
             {
                 $"- Repository: **{oc.GithubRepository}**",
                 $"- Project: **{oc.ProjectName}**",
@@ -224,6 +220,8 @@ namespace SnDocumentGenerator.Writers
             output.WriteLine();
 
             WriteOptionsExample(oc, output);
+
+            WriteEnvironmentVariablesExample(oc, output);
         }
     }
 }

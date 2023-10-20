@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace SnDocumentGenerator.Parser
@@ -12,8 +10,8 @@ namespace SnDocumentGenerator.Parser
     /// </summary>
     internal class MainWalker : WalkerBase
     {
-        public List<OperationInfo> Operations { get; } = new List<OperationInfo>();
-        public List<OptionsClassInfo> OptionsClasses { get; } = new List<OptionsClassInfo>();
+        public List<OperationInfo> Operations { get; } = new();
+        public List<OptionsClassInfo> OptionsClasses { get; } = new();
 
         private readonly string _path;
 
