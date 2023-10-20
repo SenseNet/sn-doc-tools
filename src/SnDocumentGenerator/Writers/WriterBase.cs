@@ -214,8 +214,9 @@ namespace SnDocumentGenerator.Writers
             output.WriteLine("```");
             var prefix = oc.ConfigSection.Replace(":", "__");
             foreach (var prop in oc.Properties)
-                output.WriteLine($"--{prefix}__{prop.Name} {GetPropertyExample(prop)}");
+                output.WriteLine($"{prefix}__{prop.Name}=\"_{prop.Type}_value_\"");
             output.WriteLine("```");
         }
     }
 }
+// sensenet__Authetnicatin__Authority="value"
