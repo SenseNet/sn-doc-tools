@@ -2,11 +2,11 @@
   "profiles": {
     "SnDocumentGenerator": {
       "commandName": "Project",
-      //"commandLineArgs": "D:\\dev\\github C:\\Users\\kavics\\Desktop\\ODataApi\\2023-10-19\\sensenet-ecosystem"
-      "commandLineArgs": "D:\\dev\\github\\sensenet\\src C:\\Users\\kavics\\Desktop\\ODataApi\\2023-10-19\\sensenet"
-      //"commandLineArgs": "D:\\dev\\github\\sensenet\\src C:\\Users\\kavics\\Desktop\\ODataApi\\2023-10-19\\sensenet-all -all"
-      //"commandLineArgs": "D:\\dev\\github\\sensenet\\src C:\\Users\\kavics\\Desktop\\ODataApi\\2023-10-19\\sensenet-cat -cat"
-      //"commandLineArgs": "D:\\dev\\github\\sensenet\\src C:\\Users\\kavics\\Desktop\\ODataApi\\2023-10-19\\sensenet-op -op"
+      //"commandLineArgs": "D:\\dev\\github D:\\dev\\sn-doc-generated\\2023-10-20\\sensenet-ecosystem"
+      "commandLineArgs": "D:\\dev\\github\\sensenet\\src D:\\dev\\sn-doc-generated\\2023-10-20\\sensenet"
+      //"commandLineArgs": "D:\\dev\\github\\sensenet\\src D:\\dev\\sn-doc-generated\\2023-10-20\\sensenet-all -all"
+      //"commandLineArgs": "D:\\dev\\github\\sensenet\\src D:\\dev\\sn-doc-generated\\2023-10-20\\sensenet-cat -cat"
+      //"commandLineArgs": "D:\\dev\\github\\sensenet\\src D:\\dev\\sn-doc-generated\\2023-10-20\\sensenet-op -op"
     }
   }
 }

@@ -222,6 +222,8 @@ namespace SnDocumentGenerator.Writers
             }
 
             output.WriteLine();
+
+            WriteOptionsExample(oc, output);
         }
     }
 }
