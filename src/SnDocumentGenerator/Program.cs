@@ -53,7 +53,7 @@ namespace SnDocumentGenerator
                 .ToList();
 
             var testOps = operations.Where(o => o.Project?.IsTestProject ?? true).ToArray();
-            var fwOps = operations.Where(o => o.ProjectType == ProjectType.NetFramework || o.ProjectType == ProjectType.Unknown).ToArray();
+            var fwOps = operations.Where(o => o.ProjectType == ProjectType.OldNetFramework || o.ProjectType == ProjectType.Unknown).ToArray();
             var coreOps = operations.Except(testOps).Except(fwOps).ToArray();
 
             SetOperationLinks(options.All ? operations : coreOps);

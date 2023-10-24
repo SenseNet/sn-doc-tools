@@ -122,7 +122,9 @@ namespace SnDocumentGenerator.Parser
             if (typeName.StartsWith("netstandard"))
                 return ProjectType.NetStandard;
             if (typeName.StartsWith("netframework"))
-                return ProjectType.NetFramework;
+                return ProjectType.OldNetFramework;
+            if (typeName.StartsWith("net") && typeName.Length > 3 && char.IsNumber(typeName[3]))
+                return ProjectType.Net;
             return ProjectType.Unknown;
         }
 
