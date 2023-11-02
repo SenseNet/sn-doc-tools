@@ -59,7 +59,7 @@ namespace SnDocumentGenerator
             SetOperationLinks(options.All ? operations : coreOps);
 
             using (var writer = new StreamWriter(Path.Combine(options.Output, "generation.txt"), false))
-                WriteGenerationInfo(writer, options, operations, coreOps, optionsClasses);
+                WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses);
 
             WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, false, options);
             WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, true, options);
@@ -82,12 +82,11 @@ namespace SnDocumentGenerator
         }
 
         private static void WriteGenerationInfo(TextWriter writer, Options options,
-            List<OperationInfo> operations, OperationInfo[] coreOps, OptionsClassInfo[] optionClasses)
+            List<OperationInfo> operations, OperationInfo[] coreOps, ref OptionsClassInfo[] optionClasses)
         {
             writer.WriteLine("Path:            {0}", options.Input);
             writer.WriteLine("Operations:      {0}", operations.Count);
             writer.WriteLine("Options classes: {0}", optionClasses.Length);
-
 
             var issuedOperations = new List<(OperationInfo op, List<string> parameters)>();
             foreach (var op in coreOps)
@@ -130,6 +129,14 @@ namespace SnDocumentGenerator
             foreach (var item in issuedOptionsClasses)
             {
                 writer.WriteLine("'{0}'\t{1}\t{2}", item.op.File, item.op.ClassName, string.Join(", ", item.properties));
+            }
+
+            var problems = GetOptionsClassProblems(ref optionClasses);
+            if (problems.Any())
+            {
+                writer.WriteLine();
+                foreach (var message in problems)
+                    writer.WriteLine(message);
             }
 
             //writer.WriteLine();
@@ -212,6 +219,58 @@ namespace SnDocumentGenerator
                         property.Initializer ?? "");
                 }
             }
+        }
+        private static List<string> GetOptionsClassProblems(ref OptionsClassInfo[] optionClasses)
+        {
+            var messages = new List<string>();
+            var classesToRemove = new List<OptionsClassInfo>();
+            for (var i = 0; i < optionClasses.Length - 1; i++)
+            {
+                for (var j = i + 1; j < optionClasses.Length; j++)
+                {
+                    if (optionClasses[i].ConfigSection == optionClasses[j].ConfigSection)
+                    {
+                        if (!CheckPropertyTypes(optionClasses[i], optionClasses[j]))
+                        {
+                            messages.Add(
+                                $"ERROR! Duplicated section '{optionClasses[i].ConfigSection}' and property type violation found in these options classes:\r\n" +
+                                $"\t{optionClasses[i].ClassName}: {optionClasses[i].File}\r\n" +
+                                $"\t\t{string.Join("; ", optionClasses[i].Properties.Select(x => $"{x.Type} {x.Name}"))}\r\n" +
+                                $"\t{optionClasses[j].ClassName}: {optionClasses[j].File}\r\n" +
+                                $"\t\t{string.Join("; ", optionClasses[j].Properties.Select(x => $"{x.Type} {x.Name}"))}\r\n" +
+                                $"\tDocumentations of these classes are skipped.");
+                            classesToRemove.Add(optionClasses[i]);
+                            classesToRemove.Add(optionClasses[j]);
+                        }
+                        else
+                        {
+                            messages.Add(
+                                $"WARNING! Duplicated section '{optionClasses[i].ConfigSection}' found in these options classes:\r\n" +
+                                $"\t{optionClasses[i].ClassName}: {optionClasses[i].File}\r\n" +
+                                $"\t\t{string.Join("; ", optionClasses[i].Properties.Select(x => $"{x.Type} {x.Name}"))}\r\n" +
+                                $"\t{optionClasses[j].ClassName}: {optionClasses[j].File}\r\n" +
+                                $"\t\t{string.Join("; ", optionClasses[j].Properties.Select(x => $"{x.Type} {x.Name}"))}");
+                        }
+                    }
+                }
+            }
+
+            if (classesToRemove.Count > 0)
+                optionClasses = optionClasses.Except(classesToRemove).ToArray();
+
+            return messages;
+        }
+
+        private static bool CheckPropertyTypes(OptionsClassInfo class1, OptionsClassInfo class2)
+        {
+            foreach (var prop1 in class1.Properties)
+            {
+                var prop2 = class2.Properties.FirstOrDefault(x => x.Name == prop1.Name);
+                if (prop2 != null && prop2.Type != prop1.Type)
+                    return false;
+            }
+
+            return true;
         }
 
         private static void WriteOutput(List<OperationInfo> operations,

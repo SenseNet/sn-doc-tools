@@ -189,7 +189,7 @@ namespace SnDocumentGenerator.Writers
                 {
                     if (property.Type.StartsWith("Func<"))
                         continue;
-                    currentLevel.Add(property.Name, GetPropertyExampleByType(property));
+                    currentLevel[property.Name] = GetPropertyExampleByType(property);
                 }
             }
 
