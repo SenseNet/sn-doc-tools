@@ -204,8 +204,10 @@ namespace SnDocumentGenerator.Writers
                     $"{indent}\"{property.Name}\": {GetPropertyExample(property)}{(index++ < properties.Count - 1 ? "," : "")}");
             }
         }
-        private string GetPropertyExample(OptionsPropertyInfo property)
+        protected string GetPropertyExample(OptionsPropertyInfo property)
         {
+            if (property.TypeIsEnum) return $"\"_enum_value_of_{property.TypeFullName}_\"";
+
             var type = FrontendWriter.GetJsonType(property.Type);
             if (type == "string") return "\"_value_\"";
             if (type == "string[]") return "[\"_value1_\", \"_value2_\"]";

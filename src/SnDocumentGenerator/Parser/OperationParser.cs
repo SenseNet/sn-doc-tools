@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace SnDocumentGenerator.Parser
@@ -139,7 +140,13 @@ namespace SnDocumentGenerator.Parser
 
             var code = new StreamReader(path).ReadToEnd();
             var tree = CSharpSyntaxTree.ParseText(code);
-            var walker = new MainWalker(path, showAst);
+var compilation = CSharpCompilation.Create("MyCompilation", new[] { tree }, new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
+var semanticModel = compilation.GetSemanticModel(tree);
+//var root1 = tree.GetRoot();
+//var classSymbol = semanticModel.GetDeclaredSymbol(root1.DescendantNodes().OfType().First());
+//Console.WriteLine(string.Join(", ", classSymbol.AllInterfaces));
+            
+            var walker = new MainWalker(path, showAst, semanticModel);
             walker.Visit(tree.GetRoot());
 
             foreach (var op in walker.Operations)

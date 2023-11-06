@@ -14,10 +14,12 @@ namespace SnDocumentGenerator.Parser
         public List<OptionsClassInfo> OptionsClasses { get; } = new();
 
         private readonly string _path;
+        private readonly SemanticModel _semanticModel;
 
-        public MainWalker(string path, bool showAst) : base(showAst)
+        public MainWalker(string path, bool showAst, SemanticModel semanticModel) : base(showAst)
         {
             _path = path;
+            _semanticModel = semanticModel;
         }
 
         public override void VisitAttribute(AttributeSyntax node)
@@ -27,7 +29,7 @@ namespace SnDocumentGenerator.Parser
             {
                 if (node.Parent?.Parent is ClassDeclarationSyntax classNode)
                 {
-                    var optionsClass = new OptionsClassParser().Parse(classNode, node);
+                    var optionsClass = new OptionsClassParser(_semanticModel).Parse(classNode, node);
                     if (optionsClass != null)
                     {
                         optionsClass.File = _path;

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace SnDocumentGenerator.Writers
@@ -214,15 +216,25 @@ namespace SnDocumentGenerator.Writers
 
         private object GetPropertyExampleByType(OptionsPropertyInfo property)
         {
+            if (property.TypeIsEnum)
+                return $"_enum_value_of_{property.TypeFullName}_";
+
             switch (property.Type)
             {
                 case "bool": return true;
+                case "bool?": return true;
                 case "int": return 0;
+                case "int?": return 0;
+                case "long": return 0;
                 case "float": return 0.1;
                 case "double": return 0.1;
                 case "DateTime": return new DateTime(2023, 10, 19, 9, 45, 18);
                 case "string": return "_stringValue_";
+                case "string[]": return new[] {"_value1_", "_value2_"};
             }
+
+            if (property.Type.EndsWith("[]"))
+                return new[] {new object(), new object()};
 
             return new object();
         }
