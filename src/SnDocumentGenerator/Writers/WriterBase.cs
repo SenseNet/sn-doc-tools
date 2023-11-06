@@ -197,15 +197,30 @@ namespace SnDocumentGenerator.Writers
             var index = 0;
             foreach (var property in properties)
             {
+                if (property.Type.StartsWith("Func<"))
+                    continue;
+
                 output.WriteLine(
                     $"{indent}\"{property.Name}\": {GetPropertyExample(property)}{(index++ < properties.Count - 1 ? "," : "")}");
             }
         }
         private string GetPropertyExample(OptionsPropertyInfo property)
         {
-            if (property.Type == "string")
-                return "\"_value_\"";
-            return "_value_";
+            var type = FrontendWriter.GetJsonType(property.Type);
+            if (type == "string") return "\"_value_\"";
+            if (type == "string[]") return "[\"_value1_\", \"_value2_\"]";
+            if (type == "bool") return "true";
+            if (type == "bool?") return "true";
+            if (type == "DateTime") return "2010-04-21";
+            if (type == "int") return "0";
+            if (type == "int?") return "0";
+            if (type == "long") return "0";
+            if (type == "float") return "0.0";
+            if (type == "double") return "0.0";
+
+            if(type.EndsWith("[]")) return "[{ }, { }]";
+
+            return "{ }";
         }
 
         protected void WriteEnvironmentVariablesExample(OptionsClassInfo oc, TextWriter output)
