@@ -163,8 +163,8 @@ namespace SnDocumentGenerator.Writers
             var examples = CreateOptionsExample(ocs);
 
             output.WriteLine($"## {title} ({ocs.Length} sections)");
-            output.WriteLine("Here are configuration examples, grouped by github repositories. " +
-                             "Some of these can be combined into one configuration file, " +
+            output.WriteLine("This article contains configuration examples, grouped by github repositories. " +
+                             "Some of these can be combined into a single configuration file, " +
                              "but this is determined by the application.");
             output.WriteLine();
             output.WriteLine("**WARNING** These are sample configurations containing example values. " +
