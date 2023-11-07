@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -6,6 +7,13 @@ namespace SnDocumentGenerator.Parser
 {
     internal class OptionsClassParser
     {
+        private SemanticModel _semanticModel;
+
+        public OptionsClassParser(SemanticModel semanticModel)
+        {
+            _semanticModel = semanticModel;
+        }
+
         public OptionsClassInfo Parse(ClassDeclarationSyntax classNode, AttributeSyntax attribute)
         {
             // Only public classes
@@ -43,6 +51,8 @@ namespace SnDocumentGenerator.Parser
                             }
                         }
 
+                        var propertySymbol = _semanticModel.GetDeclaredSymbol(propertyNode);
+
                         result.Properties.Add(new OptionsPropertyInfo
                         {
                             Name = propertyNode.Identifier.Text,
@@ -51,6 +61,9 @@ namespace SnDocumentGenerator.Parser
                             HasSetter = hasSetter,
                             Initializer = propertyNode.Initializer?.ToString(),
                             Documentation = propertyNode.GetLeadingTrivia().ToFullString(),
+
+                            TypeFullName = propertySymbol.Type.ToDisplayString(),
+                            TypeIsEnum = propertySymbol.Type.TypeKind == TypeKind.Enum
                         });
                     }
                 }

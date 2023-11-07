@@ -160,22 +160,38 @@ namespace SnDocumentGenerator.Writers
         {
             if (!ocs.Any())
                 return;
-            var example = CreateOptionsExample(ocs);
-            var json = JsonSerializer.Serialize(example, new JsonSerializerOptions{WriteIndented = true});
+            var examples = CreateOptionsExample(ocs);
+
             output.WriteLine($"## {title} ({ocs.Length} sections)");
-            output.WriteLine("**WARNING** This is a sample configuration containing example values. Do not use it without modifying it to reflect your environment.");
-            output.WriteLine("``` json");
-            output.WriteLine(json);
-            output.WriteLine("```");
+            output.WriteLine("This article contains configuration examples, grouped by github repositories. " +
+                             "Some of these can be combined into a single configuration file, " +
+                             "but this is determined by the application.");
+            output.WriteLine();
+            output.WriteLine("**WARNING** These are sample configurations containing example values. " +
+                             "Do not use it without modifying it to reflect your environment.");
+            foreach (var item in examples)
+            {
+                output.WriteLine($"## {item.Key}");
+                var json = JsonSerializer.Serialize(item.Value, new JsonSerializerOptions {WriteIndented = true});
+                output.WriteLine("``` json");
+                output.WriteLine(json);
+                output.WriteLine("```");
+            }
         }
 
-        private Dictionary<string, object> CreateOptionsExample(OptionsClassInfo[] ocs)
+        private Dictionary<string, Dictionary<string, object>> CreateOptionsExample(OptionsClassInfo[] ocs)
         {
-            var result = new Dictionary<string, object>();
+            var result = new Dictionary<string, Dictionary<string, object>>();
             foreach (var oc in ocs)
             {
+                var key = oc.GithubRepository;
+                if (!result.TryGetValue(key, out var currentLevel))
+                {
+                    currentLevel = new Dictionary<string, object>();
+                    result.Add(key, currentLevel);
+                }
+
                 var path = oc.ConfigSection.Split(':');
-                var currentLevel = result;
                 foreach (var segment in path)
                 {
                     if (!currentLevel.TryGetValue(segment, out var level))
@@ -198,15 +214,25 @@ namespace SnDocumentGenerator.Writers
 
         private object GetPropertyExampleByType(OptionsPropertyInfo property)
         {
+            if (property.TypeIsEnum)
+                return $"_enum_value_of_{property.TypeFullName}_";
+
             switch (property.Type)
             {
                 case "bool": return true;
+                case "bool?": return true;
                 case "int": return 0;
+                case "int?": return 0;
+                case "long": return 0;
                 case "float": return 0.1;
                 case "double": return 0.1;
                 case "DateTime": return new DateTime(2023, 10, 19, 9, 45, 18);
                 case "string": return "_stringValue_";
+                case "string[]": return new[] {"_value1_", "_value2_"};
             }
+
+            if (property.Type.EndsWith("[]"))
+                return new[] {new object(), new object()};
 
             return new object();
         }
@@ -299,7 +325,7 @@ namespace SnDocumentGenerator.Writers
 
             output.WriteLine("### Properties:");
                 foreach (var prop in oc.Properties)
-                    output.WriteLine("- **{0}** ({1}): {2}", prop.Name, prop.Type, prop.Documentation);
+                    output.WriteLine("- **{0}** ({1}): {2}", prop.Name, GetFrontendType(prop.Type), prop.Documentation);
 
             output.WriteLine();
         }
@@ -475,10 +501,14 @@ namespace SnDocumentGenerator.Writers
 
         public static string GetFrontendType(string type)
         {
+            return $"`{GetJsonType(type)}`";
+        }
+        public static string GetJsonType(string type)
+        {
             if (type == "System.Threading.Tasks.Task")
-                return "`void`";
+                return "void";
             if (type == "STT.Task")
-                return "`void`";
+                return "void";
 
             if (type.StartsWith("STT.Task<"))
                 type = type.Substring(4);
@@ -486,12 +516,12 @@ namespace SnDocumentGenerator.Writers
                 type = type.Remove(0, "Task<".Length).TrimEnd('>');
             if (type.StartsWith("IEnumerable<"))
                 type = type.Remove(0, "IEnumerable<".Length).TrimEnd('>') + "[]";
+            if (type.StartsWith("ICollection<"))
+                type = type.Remove(0, "ICollection<".Length).TrimEnd('>') + "[]";
             if (type.StartsWith("ODataArray<"))
                 return type.Substring(11).Replace(">", "") + "[]";
 
-            //if (type.Contains("<"))
-                return $"`{type}`";
-            //return type;
+            return type;
         }
 
     }

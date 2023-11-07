@@ -8,5 +8,8 @@
         public bool HasSetter { get; set; }
         public string Initializer { get; set; }
         public string Documentation { get; set; }
+
+        public string TypeFullName { get; set; }
+        public bool TypeIsEnum { get; set; }
     }
 }
