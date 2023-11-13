@@ -45,6 +45,7 @@ namespace SnDocumentGenerator
             var operations = parserResult.Operations;
             var optionsClasses = parserResult.OptionsClasses.ToArray();
             var classes = parserResult.Classes;
+            var enums = parserResult.Enums;
 
             Console.WriteLine(" ".PadRight(Console.BufferWidth - 1));
 
@@ -62,8 +63,8 @@ namespace SnDocumentGenerator
             using (var writer = new StreamWriter(Path.Combine(options.Output, "generation.txt"), false))
                 WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses);
 
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, false, options);
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, true, options);
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, enums, false, options);
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, enums, true, options);
         }
 
         private static void SetOperationLinks(IEnumerable<OperationInfo> operations)
@@ -276,7 +277,8 @@ namespace SnDocumentGenerator
 
         private static void WriteOutput(List<OperationInfo> operations,
             OperationInfo[] coreOps, OperationInfo[] fwOps, OperationInfo[] testOps,
-            OptionsClassInfo[] optionClasses, Dictionary<string, ClassInfo> classes,
+            OptionsClassInfo[] optionClasses,
+            Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
             bool forBackend, Options options)
         {
             var outputDir = Path.Combine(options.Output, forBackend ? "backend" : "frontend");
@@ -333,7 +335,7 @@ namespace SnDocumentGenerator
                 writer.WriteHead("Option class references", treeWriter);
                 writer.WriteTree("CHEAT SHEET", optionClasses, treeWriter, options);
             }
-            writer.WriteOptionClasses(optionClasses, classes, optionClassesOutputDir, options);
+            writer.WriteOptionClasses(optionClasses, classes, enums, optionClassesOutputDir, options);
         }
     }
 }

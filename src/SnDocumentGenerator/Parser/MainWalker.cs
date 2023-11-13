@@ -16,6 +16,7 @@ namespace SnDocumentGenerator.Parser
         public List<OperationInfo> Operations { get; } = new();
         public List<OptionsClassInfo> OptionsClasses { get; } = new();
         public Dictionary<string, ClassInfo> Classes { get; } = new();
+        public Dictionary<string, EnumInfo> Enums { get; } = new();
 
         private readonly string _path;
         private readonly SemanticModel _semanticModel;
@@ -81,6 +82,7 @@ namespace SnDocumentGenerator.Parser
             out bool isInterface, out bool isStruct)
         {
             TypeDeclarationSyntax classNode;
+            EnumDeclarationSyntax enumNode = node is EnumDeclarationSyntax syntax ? syntax : null;
             NamespaceDeclarationSyntax namespaceNode;
             SyntaxNode n = node;
             while ((classNode = n as ClassDeclarationSyntax) == null)
@@ -113,11 +115,16 @@ namespace SnDocumentGenerator.Parser
 
             if (classNode == null)
             {
-                @namespace = string.Empty;
-                className = null;
-                isInterface = false;
-                isStruct = false;
-                return;
+                if(!(node is EnumDeclarationSyntax))
+                {
+                    @namespace = string.Empty;
+                    className = null;
+                    isInterface = false;
+                    isStruct = false;
+                    return;
+                }
+
+                n = node;
             }
 
             while ((namespaceNode = n as NamespaceDeclarationSyntax) == null)
@@ -128,7 +135,7 @@ namespace SnDocumentGenerator.Parser
             }
 
             @namespace = namespaceNode?.Name.ToString() ?? string.Empty;
-            className = classNode.Identifier.Text;
+            className = classNode?.Identifier.Text ?? enumNode?.Identifier.Text;
             isInterface = classNode is InterfaceDeclarationSyntax;
             isStruct = classNode is StructDeclarationSyntax;
         }
@@ -180,6 +187,26 @@ namespace SnDocumentGenerator.Parser
             });
 
             base.VisitPropertyDeclaration(node);
+        }
+
+        public override void VisitEnumDeclaration(EnumDeclarationSyntax node)
+        {
+            GetNamespaceAndClassName(node, out var @namespace, out var classname, out var isInterface, out var isStruct);
+
+            var fullEnumName = $"{@namespace}.{classname}";
+            if (!Enums.TryGetValue(fullEnumName, out var enumInfo))
+            {
+                enumInfo = new EnumInfo
+                {
+                    Namespace = @namespace,
+                    Name = classname,
+                    File = _path,
+                    Members = node.Members.Select(x => x.Identifier.Text).ToArray()
+                };
+                Enums.Add(fullEnumName, enumInfo);
+            }
+
+            base.VisitEnumDeclaration(node);
         }
     }
 }

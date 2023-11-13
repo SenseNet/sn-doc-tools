@@ -183,7 +183,9 @@ namespace SnDocumentGenerator.Writers
             output.WriteLine();
         }
 
-        public override void WriteOptionClass(OptionsClassInfo oc, IDictionary<string, ClassInfo> classes, TextWriter output, Options options)
+        public override void WriteOptionClass(OptionsClassInfo oc, 
+            IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums,
+            TextWriter output, Options options)
         {
             output.WriteLine("## {0}", oc.ClassName);
 
@@ -219,7 +221,7 @@ namespace SnDocumentGenerator.Writers
 
             output.WriteLine();
 
-            WriteOptionsExample(oc, classes, output);
+            WriteOptionsExample(oc, classes, enums, output);
 
             WriteEnvironmentVariablesExample(oc, output);
         }
