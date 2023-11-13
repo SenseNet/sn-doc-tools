@@ -22,7 +22,7 @@ namespace SnDocumentGenerator.Parser
 
             var result = new OptionsClassInfo
             {
-                Name = classNode.Identifier.Text,
+                //ClassName = classNode.Identifier.Text,
                 Documentation = classNode.GetLeadingTrivia().ToFullString(),
                 ConfigSection = ParseAttributeArguments(attribute.ArgumentList)
             };

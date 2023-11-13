@@ -44,6 +44,7 @@ namespace SnDocumentGenerator
             var parserResult =  parser.Parse();
             var operations = parserResult.Operations;
             var optionsClasses = parserResult.OptionsClasses.ToArray();
+            var classes = parserResult.Classes;
 
             Console.WriteLine(" ".PadRight(Console.BufferWidth - 1));
 
@@ -61,8 +62,8 @@ namespace SnDocumentGenerator
             using (var writer = new StreamWriter(Path.Combine(options.Output, "generation.txt"), false))
                 WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses);
 
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, false, options);
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, true, options);
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, false, options);
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, true, options);
         }
 
         private static void SetOperationLinks(IEnumerable<OperationInfo> operations)
@@ -275,7 +276,7 @@ namespace SnDocumentGenerator
 
         private static void WriteOutput(List<OperationInfo> operations,
             OperationInfo[] coreOps, OperationInfo[] fwOps, OperationInfo[] testOps,
-            OptionsClassInfo[] optionClasses,
+            OptionsClassInfo[] optionClasses, Dictionary<string, ClassInfo> classes,
             bool forBackend, Options options)
         {
             var outputDir = Path.Combine(options.Output, forBackend ? "backend" : "frontend");
@@ -332,7 +333,7 @@ namespace SnDocumentGenerator
                 writer.WriteHead("Option class references", treeWriter);
                 writer.WriteTree("CHEAT SHEET", optionClasses, treeWriter, options);
             }
-            writer.WriteOptionClasses(optionClasses, optionClassesOutputDir, options);
+            writer.WriteOptionClasses(optionClasses, classes, optionClassesOutputDir, options);
         }
     }
 }

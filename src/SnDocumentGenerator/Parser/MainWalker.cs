@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace SnDocumentGenerator.Parser
@@ -10,8 +12,10 @@ namespace SnDocumentGenerator.Parser
     /// </summary>
     internal class MainWalker : WalkerBase
     {
+        public List<string> UsingDirectives { get; } = new();
         public List<OperationInfo> Operations { get; } = new();
         public List<OptionsClassInfo> OptionsClasses { get; } = new();
+        public Dictionary<string, ClassInfo> Classes { get; } = new();
 
         private readonly string _path;
         private readonly SemanticModel _semanticModel;
@@ -20,6 +24,12 @@ namespace SnDocumentGenerator.Parser
         {
             _path = path;
             _semanticModel = semanticModel;
+        }
+
+        public override void VisitUsingDirective(UsingDirectiveSyntax node)
+        {
+            UsingDirectives.Add(node.Name.ToString());
+            base.VisitUsingDirective(node);
         }
 
         public override void VisitAttribute(AttributeSyntax node)
@@ -34,9 +44,10 @@ namespace SnDocumentGenerator.Parser
                     {
                         optionsClass.File = _path;
 
-                        GetNamespaceAndClassName(node, out var @namespace, out var className);
+                        GetNamespaceAndClassName(node, out var @namespace, out var className, out var isInterface, out var isStruct);
                         optionsClass.Namespace = @namespace;
                         optionsClass.ClassName = className;
+                        optionsClass.UsingDirectives = UsingDirectives.ToList();
 
                         optionsClass.Normalize();
                         OptionsClasses.Add(optionsClass);
@@ -53,7 +64,7 @@ namespace SnDocumentGenerator.Parser
                 var op = walker.Operation;
                 op.File = _path;
 
-                GetNamespaceAndClassName(node, out var @namespace, out var className);
+                GetNamespaceAndClassName(node, out var @namespace, out var className, out var isInterface, out var isStruct);
                 op.Namespace = @namespace;
                 op.ClassName = className;
 
@@ -66,18 +77,100 @@ namespace SnDocumentGenerator.Parser
             }
         }
 
-        private void GetNamespaceAndClassName(AttributeSyntax node, out string @namespace, out string className)
+        private void GetNamespaceAndClassName(SyntaxNode node, out string @namespace, out string className,
+            out bool isInterface, out bool isStruct)
         {
-            ClassDeclarationSyntax classNode;
+            TypeDeclarationSyntax classNode;
             NamespaceDeclarationSyntax namespaceNode;
             SyntaxNode n = node;
             while ((classNode = n as ClassDeclarationSyntax) == null)
+            {
+                if (n == null)
+                    break;
                 n = n.Parent;
-            while ((namespaceNode = n as NamespaceDeclarationSyntax) == null)
-                n = n.Parent;
+            }
 
-            @namespace = namespaceNode.Name.ToString();
-            className = classNode.Identifier.ToString();
+            if (classNode == null)
+            {
+                n = node;
+                while ((classNode = n as InterfaceDeclarationSyntax) == null)
+                {
+                    if (n == null)
+                        break;
+                    n = n.Parent;
+                }
+            }
+            if (classNode == null)
+            {
+                n = node;
+                while ((classNode = n as StructDeclarationSyntax) == null)
+                {
+                    if (n == null)
+                        break;
+                    n = n.Parent;
+                }
+            }
+
+            while ((namespaceNode = n as NamespaceDeclarationSyntax) == null)
+            {
+                if (n == null)
+                    break;
+                n = n.Parent;
+            }
+
+            @namespace = namespaceNode?.Name.ToString() ?? string.Empty;
+            className = classNode.Identifier.Text;
+            isInterface = classNode is InterfaceDeclarationSyntax;
+            isStruct = classNode is StructDeclarationSyntax;
+        }
+
+        public override void VisitPropertyDeclaration(PropertyDeclarationSyntax node)
+        {
+            GetNamespaceAndClassName(node, out var @namespace, out var classname, out var isInterface, out var isStruct);
+            var fullClassName = $"{@namespace}.{classname}";
+            if (!Classes.TryGetValue(fullClassName, out var currentClass))
+            {
+                currentClass = new ClassInfo
+                {
+                    Namespace = @namespace,
+                    ClassName = classname,
+                    IsInterface = isInterface,
+                    IsStruct = isStruct,
+                    File = _path
+                };
+                Classes.Add(fullClassName, currentClass);
+            }
+
+            var hasGetter = false;
+            var hasSetter = false;
+
+            var accessorNodes = node.AccessorList?.Accessors;
+            if (accessorNodes != null)
+            {
+                foreach (var accessorNode in accessorNodes)
+                {
+                    if (accessorNode.Kind() == SyntaxKind.GetAccessorDeclaration)
+                        hasGetter = true;
+                    if (accessorNode.Kind() == SyntaxKind.SetAccessorDeclaration)
+                        hasSetter = true;
+                }
+            }
+
+            var propertySymbol = _semanticModel.GetDeclaredSymbol(node);
+            currentClass.Properties.Add(new OptionsPropertyInfo
+            {
+                Name = node.Identifier.Text,
+                Type = node.Type.ToString(),
+                HasGetter = hasGetter,
+                HasSetter = hasSetter,
+                Initializer = node.Initializer?.ToString(),
+                Documentation = node.GetLeadingTrivia().ToFullString(),
+
+                TypeFullName = propertySymbol.Type.ToDisplayString(),
+                TypeIsEnum = propertySymbol.Type.TypeKind == TypeKind.Enum
+            });
+
+            base.VisitPropertyDeclaration(node);
         }
     }
 }

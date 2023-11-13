@@ -6,9 +6,11 @@ using System.Xml;
 
 namespace SnDocumentGenerator
 {
-    public class OptionsClassInfo
+    public class ClassInfo
     {
-        public string Name { get; set; }
+        public List<string> UsingDirectives { get; set; }
+        public bool IsInterface { get; set; }
+        public bool IsStruct { get; set; }
         public string Documentation { get; set; }
         public List<OptionsPropertyInfo> Properties { get; } = new List<OptionsPropertyInfo>();
         public ProjectInfo Project { get; set; }
@@ -48,8 +50,6 @@ namespace SnDocumentGenerator
                 return _githubRepository;
             }
         }
-
-        public string ConfigSection { get; set; }
 
         public void Normalize()
         {
@@ -236,6 +236,12 @@ namespace SnDocumentGenerator
 
             return string.Join(CR, result);
         }
+    }
+    public class OptionsClassInfo : ClassInfo
+    {
+        //public string Name { get; set; }
+
+        public string ConfigSection { get; set; }
 
     }
 }

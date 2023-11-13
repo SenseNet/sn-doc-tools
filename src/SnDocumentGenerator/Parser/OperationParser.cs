@@ -16,10 +16,11 @@ namespace SnDocumentGenerator.Parser
             _options = options;
         }
 
-        public (List<OperationInfo> Operations, List<OptionsClassInfo> OptionsClasses) Parse()
+        public (List<OperationInfo> Operations, List<OptionsClassInfo> OptionsClasses, Dictionary<string, ClassInfo> Classes) Parse()
         {
             var operations = new List<OperationInfo>();
             var optionsClasses = new List<OptionsClassInfo>();
+            var classes = new Dictionary<string, ClassInfo>();
 
             var input = Path.GetFullPath(_options.Input);
             //string rootPath;
@@ -28,21 +29,21 @@ namespace SnDocumentGenerator.Parser
                 if (Path.GetExtension(input) != ".cs")
                     throw new NotSupportedException("Only csharp file (*.cs extension) is supported.");
                 //rootPath = Path.GetDirectoryName(input);
-                AddOperationsFromFile(input, input, operations, optionsClasses, null, _options.ShowAst);
+                AddOperationsFromFile(input, input, operations, optionsClasses, classes, null, _options.ShowAst);
             }
             else
             {
                 if (!Directory.Exists(input))
                     throw new ArgumentException("Unknown file or directory: " + input);
                 //rootPath = input.TrimEnd('\\', '/');
-                AddOperationsFromDirectory(input, input, operations, optionsClasses, null, _options.ShowAst);
+                AddOperationsFromDirectory(input, input, operations, optionsClasses, classes, null, _options.ShowAst);
             }
 
-            return (operations, optionsClasses);
+            return (operations, optionsClasses, classes);
         }
 
         private void AddOperationsFromDirectory(string root, string path, List<OperationInfo> operations,
-            List<OptionsClassInfo> optionsClasses, ProjectInfo currentProject, bool showAst)
+            List<OptionsClassInfo> optionsClasses, Dictionary<string, ClassInfo> classes, ProjectInfo currentProject, bool showAst)
         {
             if (path.EndsWith("\\obj", StringComparison.OrdinalIgnoreCase))
                 return;
@@ -58,9 +59,9 @@ namespace SnDocumentGenerator.Parser
                 currentProject = CreateProject(projectPath);
 
             foreach (var directory in Directory.GetDirectories(path))
-                AddOperationsFromDirectory(root, directory, operations, optionsClasses, currentProject, showAst);
+                AddOperationsFromDirectory(root, directory, operations, optionsClasses, classes, currentProject, showAst);
             foreach (var file in Directory.GetFiles(path, "*.cs"))
-                AddOperationsFromFile(root, file, operations, optionsClasses, currentProject, showAst);
+                AddOperationsFromFile(root, file, operations, optionsClasses, classes, currentProject, showAst);
         }
 
         private ProjectInfo CreateProject(string projectPath)
@@ -130,7 +131,7 @@ namespace SnDocumentGenerator.Parser
         }
 
         private void AddOperationsFromFile(string root, string path, List<OperationInfo> operations,
-            List<OptionsClassInfo> optionsClasses, ProjectInfo currentProject, bool showAst)
+            List<OptionsClassInfo> optionsClasses, Dictionary<string, ClassInfo> classes, ProjectInfo currentProject, bool showAst)
         {
             if (path.Length > root.Length)
             {
@@ -165,6 +166,23 @@ var semanticModel = compilation.GetSemanticModel(tree);
 
                 if (walker.OptionsClasses.Count > 0)
                     Console.WriteLine("{0}: OPTIONS CLASSES: {1}", path, walker.OptionsClasses.Count);
+            }
+
+            foreach (var item in walker.Classes)
+            {
+                var @class = item.Value;
+                @class.Project = currentProject;
+                @class.UsingDirectives = walker.UsingDirectives;
+                if (classes.ContainsKey(item.Key))
+                {
+                    Console.WriteLine("Duplicated type:" + item.Key);
+                    Console.WriteLine("  " + classes[item.Key].File);
+                    Console.WriteLine("  " + @class.File);
+                }
+                else
+                {
+                    classes.Add(item.Key, @class);
+                }
             }
         }
 
