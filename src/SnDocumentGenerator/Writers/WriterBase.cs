@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using Microsoft.VisualBasic.CompilerServices;
+using Newtonsoft.Json;
+using static System.Collections.Specialized.BitVector32;
 
 namespace SnDocumentGenerator.Writers
 {
@@ -27,7 +31,7 @@ namespace SnDocumentGenerator.Writers
         public abstract void WriteTree(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
 
         public abstract void WriteOperation(OperationInfo op, TextWriter output, Options options);
-        public abstract void WriteOptionClass(OptionsClassInfo op, TextWriter output, Options options);
+        public abstract void WriteOptionClass(OptionsClassInfo op, IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums, TextWriter output, Options options);
 
         public virtual void WriteAttribute(string name, List<string> values, string prefix, TextWriter output)
         {
@@ -50,7 +54,7 @@ namespace SnDocumentGenerator.Writers
                 }
                 catch// (Exception e)
                 {
-                    //UNDONE: handle errors
+                    //TODO: handle errors
                 }
             }
 
@@ -96,7 +100,9 @@ namespace SnDocumentGenerator.Writers
             }
         }
 
-        public void WriteOptionClasses(IEnumerable<OptionsClassInfo> optionClasses, string outputDir, Options options)
+        public void WriteOptionClasses(IEnumerable<OptionsClassInfo> optionClasses,
+            IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums,
+            string outputDir, Options options)
         {
             var fileWriters = new Dictionary<string, TextWriter>();
 
@@ -105,11 +111,11 @@ namespace SnDocumentGenerator.Writers
                 try
                 {
                     var categoryWriter = GetOrCreateWriter(outputDir, oc, fileWriters, options);
-                    WriteOptionClass(oc, categoryWriter, options);
+                    WriteOptionClass(oc, classes, enums, categoryWriter, options);
                 }
                 catch// (Exception e)
                 {
-                    //UNDONE: handle errors
+                    //TODO: handle errors
                 }
             }
 
@@ -172,15 +178,107 @@ namespace SnDocumentGenerator.Writers
         }
 
 
-        protected void WriteOptionsExample(OptionsClassInfo oc, TextWriter output)
+        protected void WriteOptionsExample(OptionsClassInfo oc,
+            IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums, TextWriter output)
         {
+            //output.WriteLine("### Configuration example:");
+            //output.WriteLine("``` json");
+            //output.WriteLine("{");
+            //WriteSection(oc.ConfigSection.Split(':'), 0, "  ", oc.Properties, output);
+            //output.WriteLine("}");
+            //output.WriteLine("```");
+
+            var exampleObject = BuildExampleObject(oc, classes, enums);
+
+            var root = new Dictionary<string, object>();
+            var names = oc.ConfigSection.Split(':');
+            var currentLevel = root;
+            for (int i = 0; i < names.Length-1; i++)
+            {
+                var newLevel = new Dictionary<string, object>();
+                currentLevel.Add(names[i], newLevel);
+                currentLevel = newLevel;
+            }
+            currentLevel.Add(names.Last(), exampleObject);
+
             output.WriteLine("### Configuration example:");
             output.WriteLine("``` json");
-            output.WriteLine("{");
-            WriteSection(oc.ConfigSection.Split(':'), 0, "  ", oc.Properties, output);
-            output.WriteLine("}");
+            output.WriteLine(JsonConvert.SerializeObject(root, Formatting.Indented));
             output.WriteLine("```");
         }
+        private object BuildExampleObject(ClassInfo oc, IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums)
+        {
+            var result = new Dictionary<string, object>();
+            foreach (var property in oc.Properties)
+                result.Add(property.Name, GetPropertyExample(oc, property, classes, enums));
+            return result;
+        }
+        private object GetPropertyExample(ClassInfo @class, OptionsPropertyInfo property,
+            IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums)
+        {
+            if (property.TypeIsEnum)
+                return GetEnumMembers(@class, property, classes, enums) ?? $"\"_enum_value_of_{property.TypeFullName}_\"";
+
+            var type = FrontendWriter.GetJsonType(property.Type);
+            if (type == "string") return "_value_";
+            if (type == "string[]") return new[] {"_value_"};
+            if (type == "bool") return true;
+            if (type == "bool?") return true;
+            if (type == "DateTime") return new DateTime(2013, 11, 14);
+            if (type == "int") return 0;
+            if (type == "int?") return 0;
+            if (type == "long") return 0;
+            if (type == "float") return 0.0f;
+            if (type == "double") return 0.0d;
+
+            var nestedObject = GetNestedObject(@class, property, classes);
+
+            if (type.EndsWith("[]"))
+            {
+                if (nestedObject == null)
+                    return new[] {new object()};
+                return new[] { BuildExampleObject(nestedObject, classes, enums) };
+            }
+
+            if(nestedObject == null)
+                return new object();
+            return BuildExampleObject(nestedObject, classes, enums);
+        }
+
+        private string GetEnumMembers(ClassInfo @class, OptionsPropertyInfo property,
+            IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums)
+        {
+            if (!enums.TryGetValue(property.TypeFullName, out var enumInfo))
+                return null;
+            return string.Join(" | ", enumInfo.Members);
+        }
+
+        private ClassInfo GetNestedObject(ClassInfo @class, OptionsPropertyInfo property, IDictionary<string, ClassInfo> classes)
+        {
+            var typeFullName = property.TypeFullName;
+            if (typeFullName.Contains(".IEnumerable<") ||
+                typeFullName.Contains(".ICollection<") ||
+                typeFullName.Contains(".ODataArray<"))
+            {
+                var p = typeFullName.IndexOf('<');
+                typeFullName = typeFullName.Substring(p + 1).TrimEnd('>');
+            }
+
+            if (typeFullName.Contains('.'))
+            {
+                if (classes.TryGetValue(typeFullName, out var classInfo))
+                    return classInfo;
+                return null;
+            }
+
+            foreach (var @namespace in @class.UsingDirectives.Union(new []{@class.Namespace}))
+                if (classes.TryGetValue($"{@namespace}.{property.Type}", out var classInfo))
+                    return classInfo;
+
+            return null;
+        }
+
+
         private void WriteSection(string[] sections, int sectionIndex, string indent, List<OptionsPropertyInfo> properties, TextWriter output)
         {
             if (sectionIndex >= sections.Length)
