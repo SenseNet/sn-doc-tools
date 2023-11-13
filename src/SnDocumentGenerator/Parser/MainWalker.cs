@@ -111,6 +111,15 @@ namespace SnDocumentGenerator.Parser
                 }
             }
 
+            if (classNode == null)
+            {
+                @namespace = string.Empty;
+                className = null;
+                isInterface = false;
+                isStruct = false;
+                return;
+            }
+
             while ((namespaceNode = n as NamespaceDeclarationSyntax) == null)
             {
                 if (n == null)
