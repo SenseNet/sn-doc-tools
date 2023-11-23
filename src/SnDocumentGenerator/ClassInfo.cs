@@ -75,6 +75,8 @@ namespace SnDocumentGenerator
             var xml = new XmlDocument();
             xml.LoadXml(src);
 
+            RemoveTextNodesFromRoot(xml);
+
             ParseCategory(xml);
             ParseLinks(xml);
             ParseCode(xml);
@@ -87,6 +89,17 @@ namespace SnDocumentGenerator
             text = NormalizeWhitespaces(text);
 
             return text;
+        }
+
+        private void RemoveTextNodesFromRoot(XmlDocument xml)
+        {
+            var root = xml.DocumentElement;
+            if(root == null)
+                return;
+            XmlNode textNode;
+            while (null != (textNode = root.SelectSingleNode("./text()")))
+                root.RemoveChild(textNode);
+
         }
 
         private void ParseCategory(XmlDocument xml)
