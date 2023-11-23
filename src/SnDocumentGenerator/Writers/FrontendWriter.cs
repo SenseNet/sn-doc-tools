@@ -201,10 +201,8 @@ namespace SnDocumentGenerator.Writers
                     }
                     currentLevel = (Dictionary<string, object>)level;
                 }
-                foreach (var property in oc.Properties)
+                foreach (var property in oc.Properties.Where(x => !x.TypeIsBackendOnly))
                 {
-                    if (property.Type.StartsWith("Func<"))
-                        continue;
                     currentLevel[property.Name] = GetPropertyExampleByType(property);
                 }
             }
@@ -324,7 +322,7 @@ namespace SnDocumentGenerator.Writers
             WriteEnvironmentVariablesExample(oc, output);
 
             output.WriteLine("### Properties:");
-                foreach (var prop in oc.Properties)
+                foreach (var prop in oc.Properties.Where(x => !x.TypeIsBackendOnly))
                     output.WriteLine("- **{0}** ({1}): {2}", prop.Name, GetFrontendType(prop.Type), prop.Documentation);
 
             output.WriteLine();

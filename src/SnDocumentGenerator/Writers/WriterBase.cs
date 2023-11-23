@@ -209,7 +209,7 @@ namespace SnDocumentGenerator.Writers
         private object BuildExampleObject(ClassInfo oc, IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums)
         {
             var result = new Dictionary<string, object>();
-            foreach (var property in oc.Properties)
+            foreach (var property in oc.Properties.Where(x => !x.TypeIsBackendOnly))
                 result.Add(property.Name, GetPropertyExample(oc, property, classes, enums));
             return result;
         }
@@ -328,7 +328,7 @@ namespace SnDocumentGenerator.Writers
             output.WriteLine("### Environment variables example:");
             output.WriteLine("```");
             var prefix = oc.ConfigSection.Replace(":", "__");
-            foreach (var prop in oc.Properties)
+            foreach (var prop in oc.Properties.Where(x => !x.TypeIsBackendOnly))
                 output.WriteLine($"{prefix}__{prop.Name}=\"_{prop.Type}_value_\"");
             output.WriteLine("```");
         }
