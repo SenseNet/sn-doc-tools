@@ -110,8 +110,9 @@ namespace SnDocumentGenerator.Writers
             {
                 try
                 {
-                    var categoryWriter = GetOrCreateWriter(outputDir, oc, fileWriters, options);
-                    WriteOptionClass(oc, classes, enums, categoryWriter, options);
+                    var writers = GetOrCreateWriters(outputDir, oc, fileWriters, options);
+                    foreach (var writer in writers)
+                        WriteOptionClass(oc, classes, enums, writer, options);
                 }
                 catch// (Exception e)
                 {
@@ -125,40 +126,159 @@ namespace SnDocumentGenerator.Writers
                 fileWriter.Close();
             }
         }
-        protected TextWriter GetOrCreateWriter(string outDir, OptionsClassInfo oc, Dictionary<string, TextWriter> writers, Options options)
+        protected TextWriter[] GetOrCreateWriters(string outDir, OptionsClassInfo oc, Dictionary<string, TextWriter> writers, Options options)
         {
-            var outFile = GetOutputFile(oc, options);
-            if (!writers.TryGetValue(outFile, out var writer))
+            var outFiles = GetOutputFiles(oc, outDir, options);
+            var result = new List<TextWriter>();
+            foreach (var outFile in outFiles)
             {
-                if (options.FileLevel == FileLevel.Operation)
+                if (!writers.TryGetValue(outFile, out var writer))
                 {
-                    var categoryPath = Path.Combine(outDir, oc.CategoryInLink);
-                    if (!Directory.Exists(categoryPath))
-                        Directory.CreateDirectory(categoryPath);
+                    if (options.FileLevel == FileLevel.Operation)
+                    {
+                        var categoryPath = Path.Combine(outDir, oc.CategoryInLink);
+                        if (!Directory.Exists(categoryPath))
+                            Directory.CreateDirectory(categoryPath);
+                    }
+                    writer = new StreamWriter(Path.Combine(outDir, outFile), false);
+                    writers.Add(outFile, writer);
+                    result.Add(writer);
+                    if (options.FileLevel == FileLevel.OperationNoCategories)
+                        WriteHead(oc.ClassName, writer);
+                    else
+                        WriteHead(oc.Category, writer);
                 }
-                writer = new StreamWriter(Path.Combine(outDir, outFile), false);
-                writers.Add(outFile, writer);
-                if(options.FileLevel == FileLevel.OperationNoCategories)
-                    WriteHead(oc.ClassName, writer);
-                else
-                    WriteHead(oc.Category, writer);
-            }
 
-            return writer;
-        }
-        protected string GetOutputFile(OptionsClassInfo oc, Options options)
-        {
-            switch (options.FileLevel)
-            {
-                case FileLevel.Category:
-                    return $"{oc.CategoryInLink}.md";
-                case FileLevel.Operation:
-                    return $"{oc.CategoryInLink}\\{oc.ClassNameInLink}.md";
-                case FileLevel.OperationNoCategories:
-                    return $"{oc.ClassNameInLink}.md";
-                default:
-                    throw GetNotSupportedFileLevelException(options.FileLevel);
             }
+            return result.ToArray();
+        }
+        protected string[] GetOutputFiles(OptionsClassInfo oc, string outDir, Options options)
+        {
+            //switch (options.FileLevel)
+            //{
+            //    case FileLevel.Category:
+            //        return $"{oc.CategoryInLink}.md";
+            //    case FileLevel.Operation:
+            //        return $"{oc.CategoryInLink}\\{oc.ClassNameInLink}.md";
+            //    case FileLevel.OperationNoCategories:
+            //        return $"{oc.ClassNameInLink}.md";
+            //    default:
+            //        throw GetNotSupportedFileLevelException(options.FileLevel);
+            //}
+            var categories = GetOptionsClassCategories(oc);
+            EnsureOptionClassCategories(categories, outDir);
+            var names = categories.Select(c => $"{OptionsClassCategoryNames[(int)c]}\\{oc.ClassNameInLink}.md").ToArray();
+            return names;
+        }
+        private void EnsureOptionClassCategories(Occ[] categories, string outDir)
+        {
+            foreach (var category in categories)
+            {
+                var categoryName = OptionsClassCategoryNames[(int) category];
+                var directory = Path.Combine(outDir, categoryName);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                    CreateCategoryFile(category, directory);
+                }
+            }
+        }
+        private void CreateCategoryFile(Occ category, string directory)
+        {
+            var fileName = directory + ".md";
+            using var writer = new StreamWriter(fileName, false);
+            var text = OptionClassCategoryFiles[category];
+            writer.WriteLine(text);
+        }
+
+        private enum Occ {SenseNet, PreviewGenerator, IdentityServer, SnIO, TaskManagement}
+        private readonly string[] OptionsClassCategoryNames =
+        {
+            "sensenet", "previewgenerator", "identityserver", "sn-io", "taskmanagement"
+        };
+        private readonly Dictionary<Occ, string> OptionClassCategoryFiles = new ()
+        {
+            {Occ.SenseNet, @"---
+title: ""Main sensenet service""
+metaTitle: ""sensenet - Configuring the main sensenet service""
+metaDescription: ""Configuring the main sensenet instance""
+---
+
+This section contains configuration for the main sensenet service.
+"},
+            {Occ.PreviewGenerator, @"---
+title: ""Preview Generator""
+metaTitle: ""sensenet - Configuring the Preview Generator""
+metaDescription: ""Configuring the Preview Generator""
+---
+
+This section contains configuration for the sensenet Preview Generator.
+"},
+            {Occ.IdentityServer, @"---
+title: ""IdentityServer""
+metaTitle: ""sensenet - Configuring the IdentityServer authentication service""
+metaDescription: ""Configuring the IdentityServer authentication service""
+---
+
+This section contains configuration for the sensenet authentication service.
+"},
+            {Occ.SnIO, @"---
+title: ""Import/export tool""
+metaTitle: ""sensenet - Configuring the import/export tool""
+metaDescription: ""Configuring the import/export tool""
+---
+
+This section contains configuration for the import/export tool.
+"},
+            {Occ.TaskManagement, @"---
+title: ""TaskManagement""
+metaTitle: ""sensenet - Configuring sensenet TaskManagement""
+metaDescription: ""Configuring sensenet TaskManagement""
+---
+
+This section contains configuration for sensenet TaskManagement.
+"}
+        };
+
+        private readonly Dictionary<string, Occ[]> OptionClassesInCategories = new()
+        {
+            {"AsposeOptions", new[] {Occ.SenseNet, Occ.PreviewGenerator}},
+            {"AsposePreviewGeneratorOptions", new[] {Occ.PreviewGenerator}},
+
+            {"AuthenticationOptions", new[] {Occ.SenseNet}},
+            {"BlobStorageOptions", new[] {Occ.SenseNet}},
+            {"ClientRequestOptions", new[] {Occ.SenseNet}},
+            {"ClientStoreOptions", new[] {Occ.SenseNet}},
+            {"CryptographyOptions", new[] {Occ.SenseNet}},
+            {"DataOptions", new[] {Occ.SenseNet}},
+            {"EmailOptions", new[] {Occ.SenseNet}},
+            {"ExclusiveLockOptions", new[] {Occ.SenseNet}},
+            {"GrpcClientOptions", new[] {Occ.SenseNet}},
+            {"HttpRequestOptions", new[] {Occ.SenseNet}},
+            {"MsSqlDatabaseInstallationOptions", new[] {Occ.SenseNet}},
+            {"MultiFactorOptions", new[] {Occ.SenseNet}},
+            {"RabbitMqOptions", new[] {Occ.SenseNet}},
+            {"RegistrationOptions", new[] {Occ.SenseNet}},
+            {"RetrierOptions", new[] {Occ.SenseNet}},
+            {"StatisticsOptions", new[] {Occ.SenseNet}},
+
+            {"DisplaySettings", new[] {Occ.SnIO}},
+            {"FsReaderArgs", new[] {Occ.SnIO}},
+            {"FsWriterArgs", new[] {Occ.SnIO}},
+            {"RepositoryReaderArgs", new[] {Occ.SnIO}},
+            {"RepositoryWriterArgs", new[] {Occ.SnIO}},
+
+            {"TaskManagementOptions", new[] {Occ.TaskManagement}},
+            {"TaskManagementWebOptions", new[] {Occ.TaskManagement}},
+
+            {"NotificationOptions", new[] {Occ.IdentityServer}},
+            {"RecaptchaOptions", new[] {Occ.IdentityServer}},
+        };
+        private Occ[] GetOptionsClassCategories(OptionsClassInfo oc)
+        {
+            if (OptionClassesInCategories.TryGetValue(oc.ClassName, out var categories))
+                return categories;
+            throw new Exception($"Options class '{oc.ClassName}' is not categorized.");
         }
 
 
