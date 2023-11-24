@@ -52,7 +52,7 @@ namespace SnDocumentGenerator.Parser
                         }
 
                         var propertySymbol = _semanticModel.GetDeclaredSymbol(propertyNode);
-
+                        var typeFullName = propertySymbol.Type.ToDisplayString();
                         result.Properties.Add(new OptionsPropertyInfo
                         {
                             Name = propertyNode.Identifier.Text,
@@ -62,8 +62,9 @@ namespace SnDocumentGenerator.Parser
                             Initializer = propertyNode.Initializer?.ToString(),
                             Documentation = propertyNode.GetLeadingTrivia().ToFullString(),
 
-                            TypeFullName = propertySymbol.Type.ToDisplayString(),
-                            TypeIsEnum = propertySymbol.Type.TypeKind == TypeKind.Enum
+                            TypeFullName = typeFullName,
+                            TypeIsEnum = propertySymbol.Type.TypeKind == TypeKind.Enum,
+                            TypeIsBackendOnly = IsTypeBackendOnly(typeFullName)
                         });
                     }
                 }
@@ -95,5 +96,9 @@ namespace SnDocumentGenerator.Parser
             return null;
         }
 
+        public static bool IsTypeBackendOnly(string typeFullName)
+        {
+            return typeFullName.StartsWith("System.Func<");
+        }
     }
 }

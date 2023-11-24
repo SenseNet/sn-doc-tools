@@ -14,4 +14,5 @@ public class OptionsPropertyInfo
 
     public string TypeFullName { get; set; }
     public bool TypeIsEnum { get; set; }
+    public bool TypeIsBackendOnly { get; set; }
 }

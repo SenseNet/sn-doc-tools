@@ -78,39 +78,28 @@ namespace SnDocumentGenerator.Writers
             var ordered = ocs
                 .OrderBy(o => o.Category, new CategoryComparer())
                 .ThenBy(o => o.ClassName);
-            output.WriteLine("| Category | ClassName | Section |");
-            output.WriteLine("| -------- | --------- | ------- |");
-            foreach (var op in ordered)
+            output.WriteLine("| ClassName | Application | Section |");
+            output.WriteLine("| --------- | ----------- | ------- |");
+
+            foreach (Occ enumValue in Enum.GetValues<Occ>())
             {
-                if (options.FileLevel == FileLevel.Category)
+                var classNamesByCategory = base.OptionClassesInCategories
+                    .Where(x => x.Value.Contains(enumValue))
+                    .Select(x => x.Key)
+                    .OrderBy(x => x)
+                    .ToArray();
+
+                foreach (var className in classNamesByCategory)
                 {
-                    output.WriteLine("| [{0}](/options/{2}) | [{1}](/options/{2}#{3}) | {4} |",
-                        op.Category,
-                        op.ClassName,
-                        op.CategoryInLink,
-                        op.ClassNameInLink,
-                        op.ConfigSection);
-                }
-                else if (options.FileLevel == FileLevel.Operation)
-                {
-                    output.WriteLine("| {0} | [{1}](/options/{2}/{3}) | {4} |",
-                        op.Category,
-                        op.ClassName,
-                        op.CategoryInLink,
-                        op.ClassNameInLink,
-                        op.ConfigSection);
-                }
-                else if (options.FileLevel == FileLevel.OperationNoCategories)
-                {
-                    output.WriteLine("| {0} | [{1}](/options/{2}) | {3} |",
-                        op.Category,
-                        op.ClassName,
-                        op.ClassNameInLink,
-                        op.ConfigSection);
-                }
-                else
-                {
-                    throw GetNotSupportedFileLevelException(options.FileLevel);
+                    var oc = ocs.FirstOrDefault(x => x.ClassName == className);
+                    if (oc == null)
+                        continue;
+                    output.WriteLine("| [{0}](/configuration/{1}/{2}) | {3} | {4} |",
+                        oc.ClassName,
+                        base.OptionsClassCategoryNames[(int)enumValue],
+                        oc.ClassNameInLink,
+                        enumValue,
+                        oc.ConfigSection);
                 }
             }
         }
@@ -160,7 +149,7 @@ namespace SnDocumentGenerator.Writers
         {
             if (!ocs.Any())
                 return;
-            var examples = CreateOptionsExample(ocs);
+            var examples = CreateOptionsExample(ocs, true);
 
             output.WriteLine($"## {title} ({ocs.Length} sections)");
             output.WriteLine("This article contains configuration examples, grouped by github repositories. " +
@@ -178,13 +167,32 @@ namespace SnDocumentGenerator.Writers
                 output.WriteLine("```");
             }
         }
+        public override void WriteConfigurationExamples(OptionsClassInfo[] ocs, TextWriter output)
+        {
+            if (!ocs.Any())
+                return;
+            var examples = CreateOptionsExample(ocs, false);
 
-        private Dictionary<string, Dictionary<string, object>> CreateOptionsExample(OptionsClassInfo[] ocs)
+            //output.WriteLine($"## {title} ({ocs.Length} sections)");
+            output.WriteLine("## Configuration example");
+            output.WriteLine();
+            output.WriteLine("**WARNING** This is a sample configuration containing example values. " +
+                             "Do not use it without modifying it to reflect your environment.");
+            foreach (var item in examples)
+            {
+                var json = JsonSerializer.Serialize(item.Value, new JsonSerializerOptions { WriteIndented = true });
+                output.WriteLine("``` json");
+                output.WriteLine(json);
+                output.WriteLine("```");
+            }
+        }
+
+        private Dictionary<string, Dictionary<string, object>> CreateOptionsExample(OptionsClassInfo[] ocs, bool groupByGithubRepositories)
         {
             var result = new Dictionary<string, Dictionary<string, object>>();
             foreach (var oc in ocs)
             {
-                var key = oc.GithubRepository;
+                var key = groupByGithubRepositories ? oc.GithubRepository : "all";
                 if (!result.TryGetValue(key, out var currentLevel))
                 {
                     currentLevel = new Dictionary<string, object>();
@@ -201,10 +209,8 @@ namespace SnDocumentGenerator.Writers
                     }
                     currentLevel = (Dictionary<string, object>)level;
                 }
-                foreach (var property in oc.Properties)
+                foreach (var property in oc.Properties.Where(x => !x.TypeIsBackendOnly))
                 {
-                    if (property.Type.StartsWith("Func<"))
-                        continue;
                     currentLevel[property.Name] = GetPropertyExampleByType(property);
                 }
             }
@@ -324,7 +330,7 @@ namespace SnDocumentGenerator.Writers
             WriteEnvironmentVariablesExample(oc, output);
 
             output.WriteLine("### Properties:");
-                foreach (var prop in oc.Properties)
+                foreach (var prop in oc.Properties.Where(x => !x.TypeIsBackendOnly))
                     output.WriteLine("- **{0}** ({1}): {2}", prop.Name, GetFrontendType(prop.Type), prop.Documentation);
 
             output.WriteLine();

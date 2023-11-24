@@ -173,6 +173,7 @@ namespace SnDocumentGenerator.Parser
             }
 
             var propertySymbol = _semanticModel.GetDeclaredSymbol(node);
+            var typeFullName = propertySymbol.Type.ToDisplayString();
             currentClass.Properties.Add(new OptionsPropertyInfo
             {
                 Name = node.Identifier.Text,
@@ -182,8 +183,9 @@ namespace SnDocumentGenerator.Parser
                 Initializer = node.Initializer?.ToString(),
                 Documentation = node.GetLeadingTrivia().ToFullString(),
 
-                TypeFullName = propertySymbol.Type.ToDisplayString(),
-                TypeIsEnum = propertySymbol.Type.TypeKind == TypeKind.Enum
+                TypeFullName = typeFullName,
+                TypeIsEnum = propertySymbol.Type.TypeKind == TypeKind.Enum,
+                TypeIsBackendOnly = OptionsClassParser.IsTypeBackendOnly(typeFullName)
             });
 
             base.VisitPropertyDeclaration(node);
