@@ -29,6 +29,7 @@ namespace SnDocumentGenerator.Writers
         public abstract void WriteTable(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
         public abstract void WriteTree(string title, OperationInfo[] ops, TextWriter output, Options options);
         public abstract void WriteTree(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
+        public abstract void WriteConfigurationExamples(OptionsClassInfo[] ocs, TextWriter output);
 
         public abstract void WriteOperation(OperationInfo op, TextWriter output, Options options);
         public abstract void WriteOptionClass(OptionsClassInfo op, IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums, TextWriter output, Options options);
@@ -100,7 +101,7 @@ namespace SnDocumentGenerator.Writers
             }
         }
 
-        public void WriteOptionClasses(IEnumerable<OptionsClassInfo> optionClasses,
+        public void WriteOptionClasses(OptionsClassInfo[] optionClasses,
             IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums,
             string outputDir, Options options)
         {
@@ -110,7 +111,7 @@ namespace SnDocumentGenerator.Writers
             {
                 try
                 {
-                    var writers = GetOrCreateWriters(outputDir, oc, fileWriters, options);
+                    var writers = GetOrCreateWriters(outputDir, oc, optionClasses, fileWriters, options);
                     foreach (var writer in writers)
                         WriteOptionClass(oc, classes, enums, writer, options);
                 }
@@ -126,9 +127,9 @@ namespace SnDocumentGenerator.Writers
                 fileWriter.Close();
             }
         }
-        protected TextWriter[] GetOrCreateWriters(string outDir, OptionsClassInfo oc, Dictionary<string, TextWriter> writers, Options options)
+        protected TextWriter[] GetOrCreateWriters(string outDir, OptionsClassInfo oc, OptionsClassInfo[] optionClasses, Dictionary<string, TextWriter> writers, Options options)
         {
-            var outFiles = GetOutputFiles(oc, outDir, options);
+            var outFiles = GetOutputFiles(oc, outDir, optionClasses, options);
             var result = new List<TextWriter>();
             foreach (var outFile in outFiles)
             {
@@ -152,7 +153,7 @@ namespace SnDocumentGenerator.Writers
             }
             return result.ToArray();
         }
-        protected string[] GetOutputFiles(OptionsClassInfo oc, string outDir, Options options)
+        protected string[] GetOutputFiles(OptionsClassInfo oc, string outDir, OptionsClassInfo[] optionClasses, Options options)
         {
             //switch (options.FileLevel)
             //{
@@ -166,11 +167,11 @@ namespace SnDocumentGenerator.Writers
             //        throw GetNotSupportedFileLevelException(options.FileLevel);
             //}
             var categories = GetOptionsClassCategories(oc);
-            EnsureOptionClassCategories(categories, outDir);
+            EnsureOptionClassCategories(categories, outDir, optionClasses, options);
             var names = categories.Select(c => $"{OptionsClassCategoryNames[(int)c]}\\{oc.ClassNameInLink}.md").ToArray();
             return names;
         }
-        private void EnsureOptionClassCategories(Occ[] categories, string outDir)
+        private void EnsureOptionClassCategories(Occ[] categories, string outDir, OptionsClassInfo[] optionClasses, Options options)
         {
             foreach (var category in categories)
             {
@@ -179,24 +180,29 @@ namespace SnDocumentGenerator.Writers
                 if (!Directory.Exists(directory))
                 {
                     Directory.CreateDirectory(directory);
-                    CreateCategoryFile(category, directory);
+                    CreateCategoryFile(category, directory, optionClasses, options);
                 }
             }
         }
-        private void CreateCategoryFile(Occ category, string directory)
+        private void CreateCategoryFile(Occ category, string directory, OptionsClassInfo[] optionClasses, Options options)
         {
             var fileName = directory + ".md";
             using var writer = new StreamWriter(fileName, false);
             var text = OptionClassCategoryFiles[category];
             writer.WriteLine(text);
+
+            var optionClassesInCategory = optionClasses
+                .Where(x => OptionClassesInCategories[x.ClassName].Contains(category)).ToArray();
+
+            WriteConfigurationExamples(optionClassesInCategory, writer);
         }
 
-        private enum Occ {SenseNet, PreviewGenerator, IdentityServer, SnIO, TaskManagement}
-        private readonly string[] OptionsClassCategoryNames =
+        protected enum Occ {SenseNet, PreviewGenerator, IdentityServer, SnIO, TaskManagement}
+        protected readonly string[] OptionsClassCategoryNames =
         {
             "sensenet", "previewgenerator", "identityserver", "sn-io", "taskmanagement"
         };
-        private readonly Dictionary<Occ, string> OptionClassCategoryFiles = new ()
+        protected readonly Dictionary<Occ, string> OptionClassCategoryFiles = new ()
         {
             {Occ.SenseNet, @"---
 title: ""Main sensenet service""
@@ -239,8 +245,7 @@ metaDescription: ""Configuring sensenet TaskManagement""
 This section contains configuration for sensenet TaskManagement.
 "}
         };
-
-        private readonly Dictionary<string, Occ[]> OptionClassesInCategories = new()
+        protected readonly Dictionary<string, Occ[]> OptionClassesInCategories = new()
         {
             {"AsposeOptions", new[] {Occ.SenseNet, Occ.PreviewGenerator}},
             {"AsposePreviewGeneratorOptions", new[] {Occ.PreviewGenerator}},

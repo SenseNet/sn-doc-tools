@@ -325,16 +325,16 @@ namespace SnDocumentGenerator
             }
             writer.WriteOperations(options.All ? operations.ToArray() : coreOps, operationsOutputDir, options);
 
-            using (var headWriter = new StreamWriter(Path.Combine(optionClassesOutputDir, "index.md"), false))
+            using (var headWriter = new StreamWriter(Path.Combine(optionClassesOutputDir, "configuration-index.md"), false))
             {
                 writer.WriteHead("Option class references", headWriter);
                 writer.WriteTable("Option classes", optionClasses, headWriter, options);
             }
-            using (var treeWriter = new StreamWriter(Path.Combine(optionClassesOutputDir, "cheatsheet.md"), false))
-            {
-                writer.WriteHead("Option class references", treeWriter);
-                writer.WriteTree("CHEAT SHEET", optionClasses, treeWriter, options);
-            }
+            //using (var treeWriter = new StreamWriter(Path.Combine(optionClassesOutputDir, "cheatsheet.md"), false))
+            //{
+            //    writer.WriteHead("Option class references", treeWriter);
+            //    writer.WriteTree("CHEAT SHEET", optionClasses, treeWriter, options);
+            //}
             writer.WriteOptionClasses(optionClasses, classes, enums, optionClassesOutputDir, options);
         }
     }

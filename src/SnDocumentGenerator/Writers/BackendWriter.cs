@@ -127,6 +127,10 @@ namespace SnDocumentGenerator.Writers
             output.WriteLine($"## {title} ({ocs.Length} classes)");
             output.WriteLine("### ... coming soon.");
         }
+        public override void WriteConfigurationExamples(OptionsClassInfo[] ocs, TextWriter output)
+        {
+            output.WriteLine("### ... coming soon.");
+        }
 
         public override void WriteOperation(OperationInfo op, TextWriter output, Options options)
         {
