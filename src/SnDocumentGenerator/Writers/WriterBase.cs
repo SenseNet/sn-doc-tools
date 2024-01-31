@@ -118,6 +118,7 @@ namespace SnDocumentGenerator.Writers
                 catch// (Exception e)
                 {
                     //TODO: handle errors
+                    throw;
                 }
             }
 
@@ -197,10 +198,10 @@ namespace SnDocumentGenerator.Writers
             WriteConfigurationExamples(optionClassesInCategory, writer);
         }
 
-        protected enum Occ {SenseNet, PreviewGenerator, IdentityServer, SnIO, TaskManagement}
+        protected enum Occ {SenseNet, PreviewGenerator, IdentityServer, SnIO, TaskManagement, SearchService}
         protected readonly string[] OptionsClassCategoryNames =
         {
-            "sensenet", "previewgenerator", "identityserver", "sn-io", "taskmanagement"
+            "sensenet", "previewgenerator", "identityserver", "sn-io", "taskmanagement", "searchservice"
         };
         protected readonly Dictionary<Occ, string> OptionClassCategoryFiles = new ()
         {
@@ -243,7 +244,16 @@ metaDescription: ""Configuring sensenet TaskManagement""
 ---
 
 This section contains configuration for sensenet TaskManagement.
+"},
+            {Occ.SearchService, @"---
+title: ""SearchService""
+metaTitle: ""sensenet - Configuring sensenet SearchService""
+metaDescription: ""Configuring sensenet SearchService""
+---
+
+This section contains configuration for sensenet SearchService.
 "}
+
         };
         protected readonly Dictionary<string, Occ[]> OptionClassesInCategories = new()
         {
@@ -258,11 +268,12 @@ This section contains configuration for sensenet TaskManagement.
             {"DataOptions", new[] {Occ.SenseNet}},
             {"EmailOptions", new[] {Occ.SenseNet}},
             {"ExclusiveLockOptions", new[] {Occ.SenseNet}},
-            {"GrpcClientOptions", new[] {Occ.SenseNet}},
+            {"GrpcClientOptions", new[] {Occ.SenseNet, Occ.SearchService}},
             {"HttpRequestOptions", new[] {Occ.SenseNet}},
+            {"MessagingOptions", new[] {Occ.SenseNet, Occ.SearchService}},
             {"MsSqlDatabaseInstallationOptions", new[] {Occ.SenseNet}},
             {"MultiFactorOptions", new[] {Occ.SenseNet}},
-            {"RabbitMqOptions", new[] {Occ.SenseNet}},
+            {"RabbitMqOptions", new[] {Occ.SenseNet, Occ.SearchService}},
             {"RegistrationOptions", new[] {Occ.SenseNet}},
             {"RetrierOptions", new[] {Occ.SenseNet}},
             {"StatisticsOptions", new[] {Occ.SenseNet}},
