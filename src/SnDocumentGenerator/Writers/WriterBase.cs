@@ -270,6 +270,7 @@ This section contains configuration for sensenet SearchService.
             {"ExclusiveLockOptions", new[] {Occ.SenseNet}},
             {"GrpcClientOptions", new[] {Occ.SenseNet, Occ.SearchService}},
             {"HttpRequestOptions", new[] {Occ.SenseNet}},
+            {"IndexingOptions", new[] {Occ.SenseNet}},
             {"MessagingOptions", new[] {Occ.SenseNet, Occ.SearchService}},
             {"MsSqlDatabaseInstallationOptions", new[] {Occ.SenseNet}},
             {"MultiFactorOptions", new[] {Occ.SenseNet}},
@@ -313,21 +314,14 @@ This section contains configuration for sensenet SearchService.
             return new NotSupportedException($"FileLevel.{fileLevel} is not supported.");
         }
 
-
+        private readonly char[] _configSectionSplitChars = ":/.".ToCharArray();
         protected void WriteOptionsExample(OptionsClassInfo oc,
             IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums, TextWriter output)
         {
-            //output.WriteLine("### Configuration example:");
-            //output.WriteLine("``` json");
-            //output.WriteLine("{");
-            //WriteSection(oc.ConfigSection.Split(':'), 0, "  ", oc.Properties, output);
-            //output.WriteLine("}");
-            //output.WriteLine("```");
-
             var exampleObject = BuildExampleObject(oc, classes, enums);
 
             var root = new Dictionary<string, object>();
-            var names = oc.ConfigSection.Split(':');
+            var names = oc.ConfigSection.Split(_configSectionSplitChars, StringSplitOptions.RemoveEmptyEntries);
             var currentLevel = root;
             for (int i = 0; i < names.Length-1; i++)
             {
