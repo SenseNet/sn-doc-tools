@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace SnDocumentGenerator.Parser
 {
@@ -17,6 +18,7 @@ namespace SnDocumentGenerator.Parser
         public List<OptionsClassInfo> OptionsClasses { get; } = new();
         public Dictionary<string, ClassInfo> Classes { get; } = new();
         public Dictionary<string, EnumInfo> Enums { get; } = new();
+        public Dictionary<MethodDeclarationSyntax, List<ServiceInfo>> Services { get; } = new();
 
         private readonly string _path;
         private readonly SemanticModel _semanticModel;
@@ -209,6 +211,68 @@ namespace SnDocumentGenerator.Parser
             }
 
             base.VisitEnumDeclaration(node);
+        }
+
+        public override void VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
+        {
+            if (node.Expression is IdentifierNameSyntax identifier)
+            {
+                var typeName = _semanticModel.GetSymbolInfo(identifier).Symbol?.ToString();
+                if (typeName == "IServiceCollection")
+                {
+                    SyntaxNode n = node;
+                    MemberAccessExpressionSyntax currentMemberAccess = node;
+                    var serviceRegistrations = new List<ServiceRegistrationInfo>();
+                    while ((n = n.Parent) != null)
+                    {
+                        if ( n is MemberAccessExpressionSyntax memberAccess)
+                        {
+                            currentMemberAccess = memberAccess;
+                        }
+                        else if(n is InvocationExpressionSyntax invocation)
+                        {
+                            var typeParams = currentMemberAccess.Name is GenericNameSyntax genericName
+                                ? genericName.TypeArgumentList.Arguments.Select(x => x.ToString()).ToArray()
+                                : Array.Empty<string>();
+                            serviceRegistrations.Add(new ServiceRegistrationInfo
+                            {
+                                Name = currentMemberAccess.Name.Identifier.Text,
+                                TypeParameters = typeParams,
+                                Parameters = invocation.ArgumentList
+                            });
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    MethodDeclarationSyntax methodDeclaration = null;
+                    while (true)
+                    {
+                        methodDeclaration = n as MethodDeclarationSyntax;
+                        if (methodDeclaration != null)
+                            break;
+                        n = n.Parent;
+                        if (n == null)
+                            break;
+                    }
+                    if (methodDeclaration != null)
+                    {
+                        Console.WriteLine($"{methodDeclaration.Identifier.Text}        ");
+                        foreach (var item in serviceRegistrations)
+                            Console.WriteLine($"    {item}");
+                        if (!Services.TryGetValue(methodDeclaration, out var serviceInfos))
+                        {
+                            serviceInfos = new List<ServiceInfo>();
+                            Services.Add(methodDeclaration, serviceInfos);
+                        }
+                        GetNamespaceAndClassName(node, out var @namespace, out var classname, out var isInterface, out var isStruct);
+                        serviceInfos.Add(new ServiceInfo(methodDeclaration, serviceRegistrations.ToArray(), _path, @namespace, classname));
+                    }
+                }
+            }
+
+            base.VisitMemberAccessExpression(node);
         }
     }
 }
