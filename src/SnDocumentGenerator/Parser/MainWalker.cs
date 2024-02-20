@@ -258,7 +258,7 @@ namespace SnDocumentGenerator.Parser
                     }
                     if (methodDeclaration != null)
                     {
-                        Console.WriteLine($"{methodDeclaration.Identifier.Text}        ");
+                        Console.WriteLine($"{methodDeclaration.Identifier.Text,-70}");
                         foreach (var item in serviceRegistrations)
                             Console.WriteLine($"    {item}");
                         if (!Services.TryGetValue(methodDeclaration, out var serviceInfos))
@@ -267,7 +267,22 @@ namespace SnDocumentGenerator.Parser
                             Services.Add(methodDeclaration, serviceInfos);
                         }
                         GetNamespaceAndClassName(node, out var @namespace, out var classname, out var isInterface, out var isStruct);
-                        serviceInfos.Add(new ServiceInfo(methodDeclaration, serviceRegistrations.ToArray(), _path, @namespace, classname));
+                        
+                        // Documentation
+                        var trivias = methodDeclaration.GetLeadingTrivia();
+                        var xmlCommentTrivia =
+                            trivias.FirstOrDefault(t => t.Kind() == SyntaxKind.SingleLineDocumentationCommentTrivia);
+                        var documentation = xmlCommentTrivia.ToFullString();
+
+                        serviceInfos.Add(new ServiceInfo
+                        {
+                            Method = methodDeclaration,
+                            Registrations = serviceRegistrations.ToArray(),
+                            File = _path,
+                            Namespace = @namespace,
+                            ClassName = classname,
+                            Documentation = documentation
+                        });
                     }
                 }
             }

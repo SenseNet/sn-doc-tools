@@ -244,6 +244,10 @@ namespace SnDocumentGenerator
                     lastClass = fullClassName;
                     writer.WriteLine(fullClassName);
                 }
+
+                var doc = item.Value[0].Documentation;
+                if(!string.IsNullOrEmpty(doc))
+                    writer.WriteLine($"        {doc}");
                 writer.WriteLine("        {0}{1}{2}", item.Key.Identifier, item.Key.TypeParameterList, FormatParameterList(item.Key.ParameterList));
                 foreach (var serviceInfo in item.Value)
                 foreach (var registration in serviceInfo.Registrations)

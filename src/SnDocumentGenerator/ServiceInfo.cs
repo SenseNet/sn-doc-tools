@@ -21,12 +21,12 @@ public class ServiceRegistrationInfo
 }
 public class ServiceInfo
 {
-    public MethodDeclarationSyntax Method { get; }
-    public ServiceRegistrationInfo[] Registrations { get; }
-    public string Namespace { get; }
-    public string ClassName { get; }
+    public MethodDeclarationSyntax Method { get; set; }
+    public ServiceRegistrationInfo[] Registrations { get; set; }
+    public string Namespace { get; set; }
+    public string ClassName { get; set; }
 
-    public string File { get; }
+    public string File { get; set; }
     private string _githubRepository;
     public string GithubRepository
     {
@@ -42,12 +42,5 @@ public class ServiceInfo
         }
     }
 
-    public ServiceInfo(MethodDeclarationSyntax method, ServiceRegistrationInfo[] registrations, string file, string @namespace, string className)
-    {
-        Method = method;
-        Registrations = registrations;
-        File = file;
-        Namespace = @namespace;
-        ClassName = className;
-    }
+    public string Documentation { get; set; }
 }
