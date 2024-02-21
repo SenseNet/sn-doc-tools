@@ -18,10 +18,10 @@ namespace SnDocumentGenerator.Parser
         public List<OptionsClassInfo> OptionsClasses { get; } = new();
         public Dictionary<string, ClassInfo> Classes { get; } = new();
         public Dictionary<string, EnumInfo> Enums { get; } = new();
-        public Dictionary<MethodDeclarationSyntax, List<ServiceInfo>> Services { get; } = new();
+        public List<ServiceRegistrationMethodInfo> ServiceRegistrationMethods { get; } = new ();
 
-        private readonly string _path;
-        private readonly SemanticModel _semanticModel;
+        protected readonly string _path;
+        protected readonly SemanticModel _semanticModel;
 
         public MainWalker(string path, bool showAst, SemanticModel semanticModel) : base(showAst)
         {
@@ -78,68 +78,6 @@ namespace SnDocumentGenerator.Parser
             {
                 base.VisitAttribute(node);
             }
-        }
-
-        private void GetNamespaceAndClassName(SyntaxNode node, out string @namespace, out string className,
-            out bool isInterface, out bool isStruct)
-        {
-            TypeDeclarationSyntax classNode;
-            EnumDeclarationSyntax enumNode = node is EnumDeclarationSyntax syntax ? syntax : null;
-            NamespaceDeclarationSyntax namespaceNode;
-            SyntaxNode n = node;
-            while ((classNode = n as ClassDeclarationSyntax) == null)
-            {
-                if (n == null)
-                    break;
-                n = n.Parent;
-            }
-
-            if (classNode == null)
-            {
-                n = node;
-                while ((classNode = n as InterfaceDeclarationSyntax) == null)
-                {
-                    if (n == null)
-                        break;
-                    n = n.Parent;
-                }
-            }
-            if (classNode == null)
-            {
-                n = node;
-                while ((classNode = n as StructDeclarationSyntax) == null)
-                {
-                    if (n == null)
-                        break;
-                    n = n.Parent;
-                }
-            }
-
-            if (classNode == null)
-            {
-                if(!(node is EnumDeclarationSyntax))
-                {
-                    @namespace = string.Empty;
-                    className = null;
-                    isInterface = false;
-                    isStruct = false;
-                    return;
-                }
-
-                n = node;
-            }
-
-            while ((namespaceNode = n as NamespaceDeclarationSyntax) == null)
-            {
-                if (n == null)
-                    break;
-                n = n.Parent;
-            }
-
-            @namespace = namespaceNode?.Name.ToString() ?? string.Empty;
-            className = classNode?.Identifier.Text ?? enumNode?.Identifier.Text;
-            isInterface = classNode is InterfaceDeclarationSyntax;
-            isStruct = classNode is StructDeclarationSyntax;
         }
 
         public override void VisitPropertyDeclaration(PropertyDeclarationSyntax node)
@@ -213,81 +151,38 @@ namespace SnDocumentGenerator.Parser
             base.VisitEnumDeclaration(node);
         }
 
-        public override void VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
-        {
-            if (node.Expression is IdentifierNameSyntax identifier)
-            {
-                var typeName = _semanticModel.GetSymbolInfo(identifier).Symbol?.ToString();
-                if (typeName == "IServiceCollection")
-                {
-                    SyntaxNode n = node;
-                    MemberAccessExpressionSyntax currentMemberAccess = node;
-                    var serviceRegistrations = new List<ServiceRegistrationInfo>();
-                    while ((n = n.Parent) != null)
-                    {
-                        if ( n is MemberAccessExpressionSyntax memberAccess)
-                        {
-                            currentMemberAccess = memberAccess;
-                        }
-                        else if(n is InvocationExpressionSyntax invocation)
-                        {
-                            var typeParams = currentMemberAccess.Name is GenericNameSyntax genericName
-                                ? genericName.TypeArgumentList.Arguments.Select(x => x.ToString()).ToArray()
-                                : Array.Empty<string>();
-                            serviceRegistrations.Add(new ServiceRegistrationInfo
-                            {
-                                Name = currentMemberAccess.Name.Identifier.Text,
-                                TypeParameters = typeParams,
-                                Parameters = invocation.ArgumentList
-                            });
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    MethodDeclarationSyntax methodDeclaration = null;
-                    while (true)
-                    {
-                        methodDeclaration = n as MethodDeclarationSyntax;
-                        if (methodDeclaration != null)
-                            break;
-                        n = n.Parent;
-                        if (n == null)
-                            break;
-                    }
-                    if (methodDeclaration != null)
-                    {
-                        Console.WriteLine($"{methodDeclaration.Identifier.Text,-70}");
-                        foreach (var item in serviceRegistrations)
-                            Console.WriteLine($"    {item}");
-                        if (!Services.TryGetValue(methodDeclaration, out var serviceInfos))
-                        {
-                            serviceInfos = new List<ServiceInfo>();
-                            Services.Add(methodDeclaration, serviceInfos);
-                        }
-                        GetNamespaceAndClassName(node, out var @namespace, out var classname, out var isInterface, out var isStruct);
-                        
-                        // Documentation
-                        var trivias = methodDeclaration.GetLeadingTrivia();
-                        var xmlCommentTrivia =
-                            trivias.FirstOrDefault(t => t.Kind() == SyntaxKind.SingleLineDocumentationCommentTrivia);
-                        var documentation = xmlCommentTrivia.ToFullString();
 
-                        serviceInfos.Add(new ServiceInfo
-                        {
-                            Method = methodDeclaration,
-                            Registrations = serviceRegistrations.ToArray(),
-                            File = _path,
-                            Namespace = @namespace,
-                            ClassName = classname,
-                            Documentation = documentation
-                        });
-                    }
-                }
+        /* ============================================================================ Service registrations */
+
+        public override void VisitMethodDeclaration(MethodDeclarationSyntax node)
+        {
+            // Parameters
+            if (IsServiceRegistrationMethod(node))
+            {
+                Console.WriteLine($"SRVREG: {node.Identifier.Text,-70}");
+
+                var visitor = new ServiceRegistrationMethodVisitor(_path, ShowAst, _semanticModel);
+                visitor.Visit(node);
+
+                if(visitor.ServiceRegistrationMethod != null)
+                    ServiceRegistrationMethods.Add(visitor.ServiceRegistrationMethod);
             }
 
-            base.VisitMemberAccessExpression(node);
+            base.VisitMethodDeclaration(node);
         }
+        private bool IsServiceRegistrationMethod(MethodDeclarationSyntax node)
+        {
+            if (node.ReturnType.ToString() != "IServiceCollection")
+                return false;
+            if (node.ParameterList.Parameters.Count < 1)
+                return false;
+            var firstParam = node.ParameterList.Parameters[0];
+            if (firstParam.Type?.ToString() != "IServiceCollection")
+                return false;
+            if (firstParam.Modifiers.All(x => x.ToString() != "this"))
+                return false;
+            return true;
+        }
+
     }
 }

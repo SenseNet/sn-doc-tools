@@ -47,7 +47,7 @@ namespace SnDocumentGenerator
             var optionsClasses = parserResult.OptionsClasses.ToArray();
             var classes = parserResult.Classes;
             var enums = parserResult.Enums;
-            var services = parserResult.Services;
+            var serviceRegistrationMethods = parserResult.ServiceRegistrationMethods;
 
             Console.WriteLine(" ".PadRight(Console.BufferWidth - 1));
 
@@ -63,7 +63,7 @@ namespace SnDocumentGenerator
             SetOperationLinks(options.All ? operations : coreOps);
 
             using (var writer = new StreamWriter(Path.Combine(options.Output, "generation.txt"), false))
-                WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses, services);
+                WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses, serviceRegistrationMethods);
 
             WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, enums, false, options);
             WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, enums, true, options);
@@ -87,7 +87,7 @@ namespace SnDocumentGenerator
 
         private static void WriteGenerationInfo(TextWriter writer, Options options,
             List<OperationInfo> operations, OperationInfo[] coreOps, ref OptionsClassInfo[] optionClasses,
-            Dictionary<MethodDeclarationSyntax, List<ServiceInfo>> services)
+            List<ServiceRegistrationMethodInfo> serviceRegistrationMethods)
         {
             writer.WriteLine("Path:            {0}", options.Input);
             writer.WriteLine("Operations:      {0}", operations.Count);
@@ -229,28 +229,22 @@ namespace SnDocumentGenerator
             writer.WriteLine("------------------------ services dump");
             var lastRepo = string.Empty;
             var lastClass = string.Empty;
-            foreach (var item in services)
+            foreach (var item in serviceRegistrationMethods)
             {
-                var firstItem = item.Value[0];
-                if (lastRepo != firstItem.GithubRepository)
+                if (lastRepo != item.GithubRepository)
                 {
-                    lastRepo = firstItem.GithubRepository;
+                    lastRepo = item.GithubRepository;
                     writer.WriteLine(lastRepo);
                 }
 
-                var fullClassName = $"    {firstItem.Namespace}.{firstItem.ClassName}";
+                var fullClassName = $"    {item.Namespace}.{item.ClassName}";
                 if (lastClass != fullClassName)
                 {
                     lastClass = fullClassName;
                     writer.WriteLine(fullClassName);
                 }
-
-                var doc = item.Value[0].Documentation;
-                if(!string.IsNullOrEmpty(doc))
-                    writer.WriteLine($"        {doc}");
-                writer.WriteLine("        {0}{1}{2}", item.Key.Identifier, item.Key.TypeParameterList, FormatParameterList(item.Key.ParameterList));
-                foreach (var serviceInfo in item.Value)
-                foreach (var registration in serviceInfo.Registrations)
+                writer.WriteLine("        {0}{1}{2}", item.Method.Identifier, item.Method.TypeParameterList, FormatParameterList(item.Method.ParameterList));
+                foreach (var registration in item.Registrations)
                 {
                     writer.WriteLine("            {0}", registration);
                 }

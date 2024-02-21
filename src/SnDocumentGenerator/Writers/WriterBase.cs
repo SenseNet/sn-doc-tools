@@ -198,10 +198,10 @@ namespace SnDocumentGenerator.Writers
             WriteConfigurationExamples(optionClassesInCategory, writer);
         }
 
-        protected enum Occ {SenseNet, PreviewGenerator, IdentityServer, SnAI, SnIO, TaskManagement, SearchService}
+        protected enum Occ {SenseNet, PreviewGenerator, IdentityServer, SnIO, TaskManagement, SearchService}
         protected readonly string[] OptionsClassCategoryNames =
         {
-            "sensenet", "previewgenerator", "identityserver", "sn-ai", "sn-io", "taskmanagement", "searchservice"
+            "sensenet", "previewgenerator", "identityserver", "sn-io", "taskmanagement", "searchservice"
         };
         protected readonly Dictionary<Occ, string> OptionClassCategoryFiles = new ()
         {
@@ -228,14 +228,6 @@ metaDescription: ""Configuring the IdentityServer authentication service""
 ---
 
 This section contains configuration for the sensenet authentication service.
-"},
-            {Occ.SnAI, @"---
-title: ""Import/export tool""
-metaTitle: ""sensenet - Configuring sensenet AI""
-metaDescription: ""Configuring sensenet AI""
----
-
-This section contains configuration for the sensenet AI features.
 "},
             {Occ.SnIO, @"---
 title: ""Import/export tool""
@@ -299,8 +291,8 @@ This section contains configuration for sensenet SearchService.
             {"NotificationOptions", new[] {Occ.IdentityServer}},
             {"RecaptchaOptions", new[] {Occ.IdentityServer}},
 
-            {"SemanticKernelOptions", new[] {Occ.SnAI}},
-            {"AzureVisionOptions", new[] {Occ.SnAI}},
+            {"SemanticKernelOptions", new[] {Occ.SenseNet}},
+            {"AzureVisionOptions", new[] {Occ.SenseNet}},
         };
         private Occ[] GetOptionsClassCategories(OptionsClassInfo oc)
         {

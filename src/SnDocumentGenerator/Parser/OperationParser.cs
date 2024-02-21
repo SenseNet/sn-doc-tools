@@ -19,13 +19,13 @@ namespace SnDocumentGenerator.Parser
 
         public (List<OperationInfo> Operations, List<OptionsClassInfo> OptionsClasses,
             Dictionary<string, ClassInfo> Classes, Dictionary<string, EnumInfo> Enums,
-            Dictionary<MethodDeclarationSyntax, List<ServiceInfo>> Services) Parse()
+            List<ServiceRegistrationMethodInfo> ServiceRegistrationMethods) Parse()
         {
             var operations = new List<OperationInfo>();
             var optionsClasses = new List<OptionsClassInfo>();
             var classes = new Dictionary<string, ClassInfo>();
             var enums = new Dictionary<string, EnumInfo>();
-            var services = new Dictionary<MethodDeclarationSyntax, List<ServiceInfo>>();
+            var serviceRegistrationMethods = new List<ServiceRegistrationMethodInfo>();
 
             var input = Path.GetFullPath(_options.Input);
             //string rootPath;
@@ -34,23 +34,23 @@ namespace SnDocumentGenerator.Parser
                 if (Path.GetExtension(input) != ".cs")
                     throw new NotSupportedException("Only csharp file (*.cs extension) is supported.");
                 //rootPath = Path.GetDirectoryName(input);
-                AddOperationsFromFile(input, input, operations, optionsClasses, classes, enums, services, null, _options.ShowAst);
+                AddOperationsFromFile(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null, _options.ShowAst);
             }
             else
             {
                 if (!Directory.Exists(input))
                     throw new ArgumentException("Unknown file or directory: " + input);
                 //rootPath = input.TrimEnd('\\', '/');
-                AddOperationsFromDirectory(input, input, operations, optionsClasses, classes, enums, services, null, _options.ShowAst);
+                AddOperationsFromDirectory(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null, _options.ShowAst);
             }
 
-            return (operations, optionsClasses, classes, enums, services);
+            return (operations, optionsClasses, classes, enums, serviceRegistrationMethods);
         }
 
         private void AddOperationsFromDirectory(string root, string path,
             List<OperationInfo> operations, List<OptionsClassInfo> optionsClasses,
             Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
-            Dictionary<MethodDeclarationSyntax, List<ServiceInfo>> services,
+            List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
             ProjectInfo currentProject, bool showAst)
         {
             if (path.EndsWith("\\obj", StringComparison.OrdinalIgnoreCase))
@@ -67,9 +67,9 @@ namespace SnDocumentGenerator.Parser
                 currentProject = CreateProject(projectPath);
 
             foreach (var directory in Directory.GetDirectories(path))
-                AddOperationsFromDirectory(root, directory, operations, optionsClasses, classes, enums, services, currentProject, showAst);
+                AddOperationsFromDirectory(root, directory, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject, showAst);
             foreach (var file in Directory.GetFiles(path, "*.cs"))
-                AddOperationsFromFile(root, file, operations, optionsClasses, classes, enums, services, currentProject, showAst);
+                AddOperationsFromFile(root, file, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject, showAst);
         }
 
         private ProjectInfo CreateProject(string projectPath)
@@ -141,7 +141,7 @@ namespace SnDocumentGenerator.Parser
         private void AddOperationsFromFile(string root, string path,
             List<OperationInfo> operations, List<OptionsClassInfo> optionsClasses,
             Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
-            Dictionary<MethodDeclarationSyntax, List<ServiceInfo>> services,
+            List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
             ProjectInfo currentProject, bool showAst)
         {
             if (path.Length > root.Length)
@@ -212,9 +212,9 @@ var semanticModel = compilation.GetSemanticModel(tree);
                 }
             }
 
-            foreach (var item in walker.Services)
+            foreach (var item in walker.ServiceRegistrationMethods)
             {
-                services.Add(item.Key, item.Value);
+                serviceRegistrationMethods.Add(item);
             }
         }
 
