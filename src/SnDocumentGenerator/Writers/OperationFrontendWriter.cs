@@ -6,22 +6,8 @@ using System.Text.Json;
 
 namespace SnDocumentGenerator.Writers
 {
-    internal class FrontendWriter : WriterBase
+    internal class OperationFrontendWriter : OperationWriter
     {
-        private class CategoryComparer : IComparer<string>
-        {
-            public int Compare(string x, string y)
-            {
-                if (x == null && y == null)
-                    return 0;
-                if (x == null)
-                    return 1;
-                if (y == null)
-                    return -1;
-                return string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
         public override void WriteTable(string title, OperationInfo[] ops, TextWriter output, Options options)
         {
             if (!ops.Any())
@@ -68,41 +54,6 @@ namespace SnDocumentGenerator.Writers
                 }
             }
         }
-        public override void WriteTable(string title, OptionsClassInfo[] ocs, TextWriter output, Options options)
-        {
-            if (!ocs.Any())
-                return;
-
-            output.WriteLine($"## {title} ({ocs.Length} sections)");
-
-            var ordered = ocs
-                .OrderBy(o => o.Category, new CategoryComparer())
-                .ThenBy(o => o.ClassName);
-            output.WriteLine("| ClassName | Application | Section |");
-            output.WriteLine("| --------- | ----------- | ------- |");
-
-            foreach (Occ enumValue in Enum.GetValues<Occ>())
-            {
-                var classNamesByCategory = base.OptionClassesInCategories
-                    .Where(x => x.Value.Contains(enumValue))
-                    .Select(x => x.Key)
-                    .OrderBy(x => x)
-                    .ToArray();
-
-                foreach (var className in classNamesByCategory)
-                {
-                    var oc = ocs.FirstOrDefault(x => x.ClassName == className);
-                    if (oc == null)
-                        continue;
-                    output.WriteLine("| [{0}](/configuration/{1}/{2}) | {3} | {4} |",
-                        oc.ClassName,
-                        base.OptionsClassCategoryNames[(int)enumValue],
-                        oc.ClassNameInLink,
-                        enumValue,
-                        oc.ConfigSection);
-                }
-            }
-        }
 
         public override void WriteTree(string title, OperationInfo[] ops, TextWriter output, Options options)
         {
@@ -144,103 +95,6 @@ namespace SnDocumentGenerator.Writers
 
                 }
             }
-        }
-        public override void WriteTree(string title, OptionsClassInfo[] ocs, TextWriter output, Options options)
-        {
-            if (!ocs.Any())
-                return;
-            var examples = CreateOptionsExample(ocs, true);
-
-            output.WriteLine($"## {title} ({ocs.Length} sections)");
-            output.WriteLine("This article contains configuration examples, grouped by github repositories. " +
-                             "Some of these can be combined into a single configuration file, " +
-                             "but this is determined by the application.");
-            output.WriteLine();
-            output.WriteLine("**WARNING** These are sample configurations containing example values. " +
-                             "Do not use it without modifying it to reflect your environment.");
-            foreach (var item in examples)
-            {
-                output.WriteLine($"## {item.Key}");
-                var json = JsonSerializer.Serialize(item.Value, new JsonSerializerOptions {WriteIndented = true});
-                output.WriteLine("``` json");
-                output.WriteLine(json);
-                output.WriteLine("```");
-            }
-        }
-        public override void WriteConfigurationExamples(OptionsClassInfo[] ocs, TextWriter output)
-        {
-            if (!ocs.Any())
-                return;
-            var examples = CreateOptionsExample(ocs, false);
-
-            //output.WriteLine($"## {title} ({ocs.Length} sections)");
-            output.WriteLine("## Configuration example");
-            output.WriteLine();
-            output.WriteLine("**WARNING** This is a sample configuration containing example values. " +
-                             "Do not use it without modifying it to reflect your environment.");
-            foreach (var item in examples)
-            {
-                var json = JsonSerializer.Serialize(item.Value, new JsonSerializerOptions { WriteIndented = true });
-                output.WriteLine("``` json");
-                output.WriteLine(json);
-                output.WriteLine("```");
-            }
-        }
-
-        private Dictionary<string, Dictionary<string, object>> CreateOptionsExample(OptionsClassInfo[] ocs, bool groupByGithubRepositories)
-        {
-            var result = new Dictionary<string, Dictionary<string, object>>();
-            foreach (var oc in ocs)
-            {
-                var key = groupByGithubRepositories ? oc.GithubRepository : "all";
-                if (!result.TryGetValue(key, out var currentLevel))
-                {
-                    currentLevel = new Dictionary<string, object>();
-                    result.Add(key, currentLevel);
-                }
-
-                var path = oc.ConfigSection.Split(':');
-                foreach (var segment in path)
-                {
-                    if (!currentLevel.TryGetValue(segment, out var level))
-                    {
-                        level = new Dictionary<string, object>();
-                        currentLevel.Add(segment, level);
-                    }
-                    currentLevel = (Dictionary<string, object>)level;
-                }
-                foreach (var property in oc.Properties.Where(x => !x.TypeIsBackendOnly))
-                {
-                    currentLevel[property.Name] = GetPropertyExampleByType(property);
-                }
-            }
-
-            return result;
-        }
-
-        private object GetPropertyExampleByType(OptionsPropertyInfo property)
-        {
-            if (property.TypeIsEnum)
-                return $"_enum_value_of_{property.TypeFullName}_";
-
-            switch (property.Type)
-            {
-                case "bool": return true;
-                case "bool?": return true;
-                case "int": return 0;
-                case "int?": return 0;
-                case "long": return 0;
-                case "float": return 0.1;
-                case "double": return 0.1;
-                case "DateTime": return new DateTime(2023, 10, 19, 9, 45, 18);
-                case "string": return "_stringValue_";
-                case "string[]": return new[] {"_value1_", "_value2_"};
-            }
-
-            if (property.Type.EndsWith("[]"))
-                return new[] {new object(), new object()};
-
-            return new object();
         }
 
         public override void WriteOperation(OperationInfo op, TextWriter output, Options options)
@@ -314,27 +168,6 @@ namespace SnDocumentGenerator.Writers
             output.WriteLine();
         }
 
-        public override void WriteOptionClass(OptionsClassInfo oc, IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums, TextWriter output, Options options)
-        {
-            output.WriteLine("## {0}", oc.ClassName);
-
-            output.WriteLine();
-            if (!string.IsNullOrEmpty(oc.Documentation))
-            {
-                output.WriteLine(oc.Documentation);
-            }
-            output.WriteLine();
-
-            WriteOptionsExample(oc, classes, enums, output);
-
-            WriteEnvironmentVariablesExample(oc, output);
-
-            output.WriteLine("### Properties:");
-                foreach (var prop in oc.Properties.Where(x => !x.TypeIsBackendOnly))
-                    output.WriteLine("- **{0}** ({1}): {2}", prop.Name, GetFrontendType(prop.Type), prop.Documentation);
-
-            output.WriteLine();
-        }
 
         public static bool IsAllowedParameter(OperationParameterInfo parameter)
         {
@@ -360,7 +193,7 @@ namespace SnDocumentGenerator.Writers
             var parametersToDelete = new List<OperationParameterInfo>();
             foreach (var parameter in op.Parameters)
             {
-                if (FrontendWriter.IsAllowedParameter(parameter))
+                if (OperationFrontendWriter.IsAllowedParameter(parameter))
                     parameter.Type = GetFrontendType(parameter.Type);
                 else
                     parametersToDelete.Add(parameter);
@@ -505,30 +338,6 @@ namespace SnDocumentGenerator.Writers
             return $"\"{op.Name}\": {example}";
         }
 
-        public static string GetFrontendType(string type)
-        {
-            return $"`{GetJsonType(type)}`";
-        }
-        public static string GetJsonType(string type)
-        {
-            if (type == "System.Threading.Tasks.Task")
-                return "void";
-            if (type == "STT.Task")
-                return "void";
-
-            if (type.StartsWith("STT.Task<"))
-                type = type.Substring(4);
-            if (type.StartsWith("Task<"))
-                type = type.Remove(0, "Task<".Length).TrimEnd('>');
-            if (type.StartsWith("IEnumerable<"))
-                type = type.Remove(0, "IEnumerable<".Length).TrimEnd('>') + "[]";
-            if (type.StartsWith("ICollection<"))
-                type = type.Remove(0, "ICollection<".Length).TrimEnd('>') + "[]";
-            if (type.StartsWith("ODataArray<"))
-                return type.Substring(11).Replace(">", "") + "[]";
-
-            return type;
-        }
 
     }
 }

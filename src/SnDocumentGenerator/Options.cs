@@ -17,6 +17,9 @@ namespace SnDocumentGenerator
 
         public FileLevel FileLevel { get; set; } = FileLevel.OperationNoCategories;
 
-        public bool HideDescription = true;
+        /// <summary>
+        /// Gets or sets whether the operation's description will be hidden or not. Default: true.
+        /// </summary>
+        public bool HideDescription { get; set; } = true;
     }
 }
