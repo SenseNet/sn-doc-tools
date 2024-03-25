@@ -214,6 +214,7 @@ var semanticModel = compilation.GetSemanticModel(tree);
 
             foreach (var item in walker.ServiceRegistrationMethods)
             {
+                item.Project = currentProject;
                 serviceRegistrationMethods.Add(item);
             }
         }

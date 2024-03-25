@@ -41,7 +41,6 @@ public class TypeParameterInfo
 
 public class ServiceRegistrationMethodInfo
 {
-    //UNDONE: /// <typeparam 
     public MethodDeclarationSyntax Method { get; set; }
     public TypeParameterInfo[] TypeParams { get; set; }
     public List<OperationParameterInfo> Parameters { get; set; } = new List<OperationParameterInfo>();
@@ -49,6 +48,7 @@ public class ServiceRegistrationMethodInfo
     public ServiceRegistrationCallingInfo[] Registrations { get; set; }
     public string Namespace { get; set; }
     public string ClassName { get; set; }
+    public ProjectInfo Project { get; set; }
 
     public string File { get; set; }
     private string _githubRepository;

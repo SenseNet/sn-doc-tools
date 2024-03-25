@@ -65,8 +65,8 @@ namespace SnDocumentGenerator
             using (var writer = new StreamWriter(Path.Combine(options.Output, "generation.txt"), false))
                 WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses, serviceRegistrationMethods);
 
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, enums, false, options);
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, enums, true, options);
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, serviceRegistrationMethods, classes, enums, false, options);
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, serviceRegistrationMethods, classes, enums, true, options);
         }
 
         private static void SetOperationLinks(IEnumerable<OperationInfo> operations)
@@ -226,8 +226,9 @@ namespace SnDocumentGenerator
             }
 
             writer.WriteLine();
-            writer.WriteLine("------------------------ services dump");
+            writer.WriteLine("SERVICE REGISTRATION CHEAT SHEET:");
             var lastRepo = string.Empty;
+            var lastProject = string.Empty;
             var lastClass = string.Empty;
             foreach (var item in serviceRegistrationMethods)
             {
@@ -237,16 +238,34 @@ namespace SnDocumentGenerator
                     writer.WriteLine(lastRepo);
                 }
 
-                var fullClassName = $"    {item.Namespace}.{item.ClassName}";
+                var fullProjectName = $"    {item.Project.Name}";
+                if (lastProject != fullProjectName)
+                {
+                    lastProject = fullProjectName;
+                    writer.WriteLine(fullProjectName);
+                }
+
+                var fullClassName = $"        {item.ClassName} (namespace: {item.Namespace})";
                 if (lastClass != fullClassName)
                 {
                     lastClass = fullClassName;
                     writer.WriteLine(fullClassName);
                 }
-                writer.WriteLine("        {0}{1}{2}", item.Method.Identifier, item.Method.TypeParameterList, FormatParameterList(item.Method.ParameterList));
+                writer.WriteLine("            {0}{1}{2}", item.Method.Identifier, item.Method.TypeParameterList, FormatParameterList(item.Method.ParameterList));
+                if (!string.IsNullOrEmpty(item.Documentation))
+                {
+                    writer.WriteLine("                DOC: '{0}'", item.Documentation);
+                }
+                foreach (var typeParam in item.TypeParams)
+                {
+                    writer.WriteLine("                {0} ({1}): DOC: '{2}'",
+                        typeParam.Name,
+                        string.Join(", ", typeParam.Constraints),
+                        typeParam.Documentation);
+                }
                 foreach (var registration in item.Registrations)
                 {
-                    writer.WriteLine("            {0}", registration);
+                    writer.WriteLine("                {0}", registration);
                 }
             }
         }
@@ -310,6 +329,7 @@ namespace SnDocumentGenerator
         private static void WriteOutput(List<OperationInfo> operations,
             OperationInfo[] coreOps, OperationInfo[] fwOps, OperationInfo[] testOps,
             OptionsClassInfo[] optionClasses,
+            List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
             Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
             bool forBackend, Options options)
         {
@@ -324,6 +344,10 @@ namespace SnDocumentGenerator
             var optionClassesOutputDir = Path.Combine(outputDir, "OptionClasses");
             if (!Directory.Exists(optionClassesOutputDir))
                 Directory.CreateDirectory(optionClassesOutputDir);
+
+            var serviceRegistrationsOutputDir = Path.Combine(outputDir, "ServiceRegistrations");
+            if (!Directory.Exists(serviceRegistrationsOutputDir))
+                Directory.CreateDirectory(serviceRegistrationsOutputDir);
 
             var writer = forBackend ? (WriterBase)new BackendWriter() : new FrontendWriter();
 
