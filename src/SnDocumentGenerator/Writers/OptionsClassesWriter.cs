@@ -8,9 +8,9 @@ namespace SnDocumentGenerator.Writers;
 
 internal abstract class OptionsClassesWriter : WriterBase
 {
-    public abstract void WriteTable(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
+    public abstract void WriteIndex(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
 
-    public abstract void WriteTree(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
+    public abstract void WriteCheatSheet(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
 
     public abstract void WriteConfigurationExamples(OptionsClassInfo[] ocs, TextWriter output);
 
@@ -197,6 +197,8 @@ This section contains configuration for sensenet SearchService.
             {"RetrierOptions", new[] {Occ.SenseNet}},
             {"StatisticsOptions", new[] {Occ.SenseNet}},
 
+            {"CentralizedOptions", new[] {Occ.SearchService}},
+
             {"DisplaySettings", new[] {Occ.SnIO}},
             {"FsReaderArgs", new[] {Occ.SnIO}},
             {"FsWriterArgs", new[] {Occ.SnIO}},
@@ -208,6 +210,7 @@ This section contains configuration for sensenet SearchService.
 
             {"NotificationOptions", new[] {Occ.IdentityServer}},
             {"RecaptchaOptions", new[] {Occ.IdentityServer}},
+            {"LoginPageOptions", new[] {Occ.IdentityServer}},
 
             {"SemanticKernelOptions", new[] {Occ.SenseNet}},
             {"AzureVisionOptions", new[] {Occ.SenseNet}},
@@ -219,7 +222,7 @@ This section contains configuration for sensenet SearchService.
         throw new Exception($"Options class '{oc.ClassName}' is not categorized.");
     }
 
-    protected readonly char[] _configSectionSplitChars = ":/.".ToCharArray();
+    protected readonly char[] ConfigSectionSplitChars = ":/.".ToCharArray();
 
     protected void WriteOptionsExample(OptionsClassInfo oc,
         IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums, TextWriter output)
@@ -227,7 +230,7 @@ This section contains configuration for sensenet SearchService.
         var exampleObject = BuildExampleObject(oc, classes, enums);
 
         var root = new Dictionary<string, object>();
-        var names = oc.ConfigSection.Split(_configSectionSplitChars, StringSplitOptions.RemoveEmptyEntries);
+        var names = oc.ConfigSection.Split(ConfigSectionSplitChars, StringSplitOptions.RemoveEmptyEntries);
         var currentLevel = root;
         for (int i = 0; i < names.Length - 1; i++)
         {

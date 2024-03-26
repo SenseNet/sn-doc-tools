@@ -49,6 +49,9 @@ public class ServiceRegistrationMethodInfo
     public string Namespace { get; set; }
     public string ClassName { get; set; }
     public ProjectInfo Project { get; set; }
+    public string Category { get; set; }
+    public string CategoryInLink { get; set; }
+
 
     public string File { get; set; }
     private string _githubRepository;
@@ -73,6 +76,40 @@ public class ServiceRegistrationMethodInfo
         set => _documentation = ParseDocumentation(value);
     }
 
+    private string _methodSignature;
+    public string MethodSignature => _methodSignature ??= GetMethodSignature(true);
+
+    private string _methodSignatureInLink;
+    public string MethodSignatureInLink => _methodSignatureInLink ??= GetMethodSignatureInLink(true);
+
+    public string GetMethodSignature(bool skipFirst)
+    {
+        return $"{Method.Identifier}{Method.TypeParameterList}{FormatParameterList(Method.ParameterList, skipFirst)}";
+    }
+    private string FormatParameterList(ParameterListSyntax parameters, bool skipFirst)
+    {
+        return $"({string.Join(", ", parameters.Parameters.Skip(skipFirst ? 1 : 0).Select(x => x.ToString()))})";
+    }
+    private string GetMethodSignatureInLink(bool skipFirst)
+    {
+        return
+            $"{Method.Identifier}{Method.TypeParameterList}{FormatParameterListInLink(Method.ParameterList, skipFirst)}"
+                .Replace(" ", "")
+                .Replace("<", "_")
+                .Replace(">", "")
+                .Replace(",", "_")
+                .Replace("(", "_")
+                .Replace(")", "")
+                .Replace("?", "")
+            ;
+    }
+    private string FormatParameterListInLink(ParameterListSyntax parameters, bool skipFirst)
+    {
+        var prms = parameters.Parameters.Skip(skipFirst ? 1 : 0).ToArray();
+        if (prms.Length == 0)
+            return string.Empty;
+        return $"_{string.Join("_", prms.Select(x => x.Type?.ToString()))})";
+    }
 
     private string CR = Environment.NewLine;
     private string ParseDocumentation(string documentation)
@@ -87,7 +124,7 @@ public class ServiceRegistrationMethodInfo
         var xml = new XmlDocument();
         xml.LoadXml(src);
 
-        //ParseCategory(xml);
+        ParseCategory(xml);
         ParseLinks(xml);
         ParseCode(xml);
         ParseParameterDoc(xml);
@@ -102,20 +139,20 @@ public class ServiceRegistrationMethodInfo
         return text;
     }
 
-    //private void ParseCategory(XmlDocument xml)
-    //{
-    //    var node = xml.DocumentElement.SelectSingleNode("snCategory");
-    //    node?.ParentNode.RemoveChild(node);
-    //    var category = node?.InnerText;
-    //    if (string.IsNullOrEmpty(category))
-    //        category = "Uncategorized";
-    //    Category = category;
+    private void ParseCategory(XmlDocument xml)
+    {
+        var node = xml.DocumentElement.SelectSingleNode("snCategory");
+        node?.ParentNode.RemoveChild(node);
+        var category = node?.InnerText;
+        if (string.IsNullOrEmpty(category))
+            category = "Uncategorized";
+        Category = category;
 
-    //    var categoryInLink = Category.Replace(" ", "").ToLowerInvariant();
-    //    if (categoryInLink.StartsWith("index"))
-    //        categoryInLink = categoryInLink.Remove(0, 1);
-    //    CategoryInLink = categoryInLink;
-    //}
+        var categoryInLink = Category.Replace(" ", "").ToLowerInvariant();
+        if (categoryInLink.StartsWith("index"))
+            categoryInLink = categoryInLink.Remove(0, 1);
+        CategoryInLink = categoryInLink;
+    }
 
     private void ParseParameterDoc(XmlDocument xml)
     {

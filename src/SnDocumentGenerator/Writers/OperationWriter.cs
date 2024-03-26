@@ -25,14 +25,10 @@ namespace SnDocumentGenerator.Writers
         // ReSharper disable once InconsistentNaming
         protected static readonly string CR = Environment.NewLine;
 
-        public abstract void WriteTable(string title, OperationInfo[] ops, TextWriter output, Options options);
-        //public abstract void WriteTable(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
-        public abstract void WriteTree(string title, OperationInfo[] ops, TextWriter output, Options options);
-        //public abstract void WriteTree(string title, OptionsClassInfo[] ocs, TextWriter output, Options options);
-        //public abstract void WriteConfigurationExamples(OptionsClassInfo[] ocs, TextWriter output);
+        public abstract void WriteIndex(string title, OperationInfo[] ops, TextWriter output, Options options);
+        public abstract void WriteCheatSheet(string title, OperationInfo[] ops, TextWriter output, Options options);
 
         public abstract void WriteOperation(OperationInfo op, TextWriter output, Options options);
-        //public abstract void WriteOptionClass(OptionsClassInfo op, IDictionary<string, ClassInfo> classes, IDictionary<string, EnumInfo> enums, TextWriter output, Options options);
 
         public virtual void WriteAttribute(string name, List<string> values, string prefix, TextWriter output)
         {

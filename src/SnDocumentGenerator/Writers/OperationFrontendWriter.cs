@@ -8,7 +8,7 @@ namespace SnDocumentGenerator.Writers
 {
     internal class OperationFrontendWriter : OperationWriter
     {
-        public override void WriteTable(string title, OperationInfo[] ops, TextWriter output, Options options)
+        public override void WriteIndex(string title, OperationInfo[] ops, TextWriter output, Options options)
         {
             if (!ops.Any())
                 return;
@@ -55,7 +55,7 @@ namespace SnDocumentGenerator.Writers
             }
         }
 
-        public override void WriteTree(string title, OperationInfo[] ops, TextWriter output, Options options)
+        public override void WriteCheatSheet(string title, OperationInfo[] ops, TextWriter output, Options options)
         {
             if (!ops.Any())
                 return;

@@ -7,7 +7,7 @@ namespace SnDocumentGenerator.Writers;
 
 internal class OptionsClassesBackendWriter : OptionsClassesWriter
 {
-    public override void WriteTable(string title, OptionsClassInfo[] ocs, TextWriter output, Options options)
+    public override void WriteIndex(string title, OptionsClassInfo[] ocs, TextWriter output, Options options)
     {
         if (!ocs.Any())
             return;
@@ -60,7 +60,7 @@ internal class OptionsClassesBackendWriter : OptionsClassesWriter
             }
         }
     }
-    public override void WriteTree(string title, OptionsClassInfo[] ocs, TextWriter output, Options options)
+    public override void WriteCheatSheet(string title, OptionsClassInfo[] ocs, TextWriter output, Options options)
     {
         output.WriteLine($"## {title} ({ocs.Length} classes)");
         output.WriteLine("### ... coming soon.");
