@@ -179,6 +179,7 @@ This section contains configuration for sensenet SearchService.
             {"AsposePreviewGeneratorOptions", new[] {Occ.PreviewGenerator}},
 
             {"AuthenticationOptions", new[] {Occ.SenseNet}},
+            {"ApiKeysOptions", new[] {Occ.SenseNet}},
             {"BlobStorageOptions", new[] {Occ.SenseNet}},
             {"ClientRequestOptions", new[] {Occ.SenseNet}},
             {"ClientStoreOptions", new[] {Occ.SenseNet}},
