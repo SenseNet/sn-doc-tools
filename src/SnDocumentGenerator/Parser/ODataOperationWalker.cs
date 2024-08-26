@@ -119,6 +119,9 @@ namespace SnDocumentGenerator.Parser
                         case "OperationName":
                             Operation.OperationName = value;
                             break;
+                        case "Category":
+                            Operation.Category = value;
+                            break;
                         case "Description":
                             Operation.Description = value;
                             break;

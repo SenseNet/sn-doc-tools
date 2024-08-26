@@ -28,7 +28,7 @@ namespace SnDocumentGenerator
         public List<OperationParameterInfo> Parameters { get; } = new List<OperationParameterInfo>();
         public OperationParameterInfo ReturnValue { get; } = new OperationParameterInfo();
 
-        public string Category { get; private set; }
+        public string Category { get; set; }
         public string CategoryInLink { get; private set; }
 
         private string _fileRelative;
@@ -75,6 +75,8 @@ namespace SnDocumentGenerator
             RequiredPolicies = NormalizeList(RequiredPolicies);
             Scenarios = NormalizeList(Scenarios);
 
+            NormalizeCategory();
+
             Description = Description?.Trim('"').Trim();
 
             //Documentation = new DocumentationParser(parameters: Parameters, returnValue: ReturnValue)
@@ -99,7 +101,7 @@ namespace SnDocumentGenerator
             var xml = new XmlDocument();
             xml.LoadXml(src);
 
-            ParseCategory(xml);
+            RemoveCategory(xml);
             ParseLinks(xml);
             ParseCode(xml);
             ParseParameterDoc(xml);
@@ -114,14 +116,14 @@ namespace SnDocumentGenerator
             return text;
         }
 
-        private void ParseCategory(XmlDocument xml)
+        private void RemoveCategory(XmlDocument xml)
         {
-            var node = xml.DocumentElement.SelectSingleNode("snCategory");
-            node?.ParentNode.RemoveChild(node);
-            var category = node?.InnerText;
-            if (string.IsNullOrEmpty(category))
-                category = "Uncategorized";
-            Category = category;
+            var node = xml.DocumentElement?.SelectSingleNode("snCategory");
+            node?.ParentNode?.RemoveChild(node);
+        }
+        private void NormalizeCategory()
+        {
+            Category = string.IsNullOrEmpty(Category) ? "Not categorized" : Category.Trim('"');
 
             var categoryInLink = Category.Replace(" ", "").ToLowerInvariant();
             if (categoryInLink.StartsWith("index"))
