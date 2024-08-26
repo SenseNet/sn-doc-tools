@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using SnDocumentGenerator.Parser;
 using SnDocumentGenerator.Writers;
 
@@ -46,6 +47,7 @@ namespace SnDocumentGenerator
             var optionsClasses = parserResult.OptionsClasses.ToArray();
             var classes = parserResult.Classes;
             var enums = parserResult.Enums;
+            var serviceRegistrationMethods = parserResult.ServiceRegistrationMethods;
 
             Console.WriteLine(" ".PadRight(Console.BufferWidth - 1));
 
@@ -61,10 +63,10 @@ namespace SnDocumentGenerator
             SetOperationLinks(options.All ? operations : coreOps);
 
             using (var writer = new StreamWriter(Path.Combine(options.Output, "generation.txt"), false))
-                WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses);
+                WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses, serviceRegistrationMethods);
 
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, enums, false, options);
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, classes, enums, true, options);
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, serviceRegistrationMethods, classes, enums, false, options);
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, serviceRegistrationMethods, classes, enums, true, options);
         }
 
         private static void SetOperationLinks(IEnumerable<OperationInfo> operations)
@@ -84,7 +86,8 @@ namespace SnDocumentGenerator
         }
 
         private static void WriteGenerationInfo(TextWriter writer, Options options,
-            List<OperationInfo> operations, OperationInfo[] coreOps, ref OptionsClassInfo[] optionClasses)
+            List<OperationInfo> operations, OperationInfo[] coreOps, ref OptionsClassInfo[] optionClasses,
+            List<ServiceRegistrationMethodInfo> serviceRegistrationMethods)
         {
             writer.WriteLine("Path:            {0}", options.Input);
             writer.WriteLine("Operations:      {0}", operations.Count);
@@ -201,9 +204,9 @@ namespace SnDocumentGenerator
                         op.IsAction ? "POST" : "GET ",
                         op.OperationName,
                         string.Join(", ", op.Parameters.Skip(1)
-                            .Where(FrontendWriter.IsAllowedParameter)
-                            .Select(x => $"{FrontendWriter.GetFrontendType(x.Type).Replace("`", "")} {x.Name}")),
-                        FrontendWriter.GetFrontendType(op.ReturnValue.Type).Replace("`", ""));
+                            .Where(OperationFrontendWriter.IsAllowedParameter)
+                            .Select(x => $"{OperationFrontendWriter.GetFrontendType(x.Type).Replace("`", "")} {x.Name}")),
+                        OperationFrontendWriter.GetFrontendType(op.ReturnValue.Type).Replace("`", ""));
                 }
             }
             
@@ -221,6 +224,54 @@ namespace SnDocumentGenerator
                         property.Initializer ?? "");
                 }
             }
+
+            writer.WriteLine();
+            writer.WriteLine("SERVICE REGISTRATION CHEAT SHEET:");
+            var lastRepo = string.Empty;
+            var lastProject = string.Empty;
+            var lastClass = string.Empty;
+            foreach (var item in serviceRegistrationMethods)
+            {
+                if (lastRepo != item.GithubRepository)
+                {
+                    lastRepo = item.GithubRepository;
+                    writer.WriteLine(lastRepo);
+                }
+
+                var fullProjectName = $"    {item.Project.Name}";
+                if (lastProject != fullProjectName)
+                {
+                    lastProject = fullProjectName;
+                    writer.WriteLine(fullProjectName);
+                }
+
+                var fullClassName = $"        {item.ClassName} (namespace: {item.Namespace})";
+                if (lastClass != fullClassName)
+                {
+                    lastClass = fullClassName;
+                    writer.WriteLine(fullClassName);
+                }
+                writer.WriteLine("            {0}", item.GetMethodSignature(false));
+                if (!string.IsNullOrEmpty(item.Documentation))
+                {
+                    writer.WriteLine("                DOC: '{0}'", item.Documentation);
+                }
+                foreach (var typeParam in item.TypeParams)
+                {
+                    writer.WriteLine("                {0} ({1}): DOC: '{2}'",
+                        typeParam.Name,
+                        string.Join(", ", typeParam.Constraints),
+                        typeParam.Documentation);
+                }
+                foreach (var registration in item.Registrations)
+                {
+                    writer.WriteLine("                {0}", registration);
+                }
+            }
+        }
+        private static string FormatParameterList(ParameterListSyntax parameters)
+        {
+            return $"({string.Join(", ", parameters.Parameters.Select(x => x.ToString()))})";
         }
         private static List<string> GetOptionsClassProblems(ref OptionsClassInfo[] optionClasses)
         {
@@ -278,6 +329,7 @@ namespace SnDocumentGenerator
         private static void WriteOutput(List<OperationInfo> operations,
             OperationInfo[] coreOps, OperationInfo[] fwOps, OperationInfo[] testOps,
             OptionsClassInfo[] optionClasses,
+            List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
             Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
             bool forBackend, Options options)
         {
@@ -289,53 +341,83 @@ namespace SnDocumentGenerator
             if (!Directory.Exists(operationsOutputDir))
                 Directory.CreateDirectory(operationsOutputDir);
 
-            var optionClassesOutputDir = Path.Combine(outputDir, "OptionClasses");
-            if (!Directory.Exists(optionClassesOutputDir))
-                Directory.CreateDirectory(optionClassesOutputDir);
-
-            var writer = forBackend ? (WriterBase)new BackendWriter() : new FrontendWriter();
+            var operationWriter = forBackend
+                ? (OperationWriter)new OperationBackendWriter()
+                : new OperationFrontendWriter();
 
             using (var headWriter = new StreamWriter(Path.Combine(operationsOutputDir, "index.md"), false))
             {
-                writer.WriteHead("Api references", headWriter);
+                operationWriter.WriteHead("Api references", headWriter);
                 if (options.All)
                 {
-                    writer.WriteTable(".NET Standard / Core Operations", coreOps, headWriter, options);
-                    writer.WriteTable(".NET Framework Operations", fwOps, headWriter, options);
-                    writer.WriteTable("Test Operations", testOps, headWriter, options);
+                    operationWriter.WriteIndex(".NET Standard / Core Operations", coreOps, headWriter, options);
+                    operationWriter.WriteIndex(".NET Framework Operations", fwOps, headWriter, options);
+                    operationWriter.WriteIndex("Test Operations", testOps, headWriter, options);
                 }
                 else
                 {
-                    writer.WriteTable("Operations", coreOps, headWriter, options);
+                    operationWriter.WriteIndex("Operations", coreOps, headWriter, options);
                 }
             }
             using (var treeWriter = new StreamWriter(Path.Combine(operationsOutputDir, "cheatsheet.md"), false))
             {
-                writer.WriteHead("Api references", treeWriter);
+                operationWriter.WriteHead("Api references", treeWriter);
                 if (options.All)
                 {
-                    writer.WriteTree(".NET Standard / Core Operations", coreOps, treeWriter, options);
-                    writer.WriteTree(".NET Framework Operations", fwOps, treeWriter, options);
-                    writer.WriteTree("Test Operations", testOps, treeWriter, options);
+                    operationWriter.WriteCheatSheet(".NET Standard / Core Operations", coreOps, treeWriter, options);
+                    operationWriter.WriteCheatSheet(".NET Framework Operations", fwOps, treeWriter, options);
+                    operationWriter.WriteCheatSheet("Test Operations", testOps, treeWriter, options);
                 }
                 else
                 {
-                    writer.WriteTree("CHEAT SHEET", coreOps, treeWriter, options);
+                    operationWriter.WriteCheatSheet("CHEAT SHEET", coreOps, treeWriter, options);
                 }
             }
-            writer.WriteOperations(options.All ? operations.ToArray() : coreOps, operationsOutputDir, options);
+            operationWriter.WriteOperations(options.All ? operations.ToArray() : coreOps, operationsOutputDir, options);
+
+            /* ======================================================================== */
+
+            var optionClassesOutputDir = Path.Combine(outputDir, "OptionClasses");
+            if (!Directory.Exists(optionClassesOutputDir))
+                Directory.CreateDirectory(optionClassesOutputDir);
+
+            var optionsClassesWriter = forBackend
+                ? (OptionsClassesWriter)new OptionsClassesBackendWriter()
+                : new OptionsClassesFrontendWriter();
 
             using (var headWriter = new StreamWriter(Path.Combine(optionClassesOutputDir, "configuration-index.md"), false))
             {
-                writer.WriteHead("Option class references", headWriter);
-                writer.WriteTable("Option classes", optionClasses, headWriter, options);
+                optionsClassesWriter.WriteHead("Option class references", headWriter);
+                optionsClassesWriter.WriteIndex("Option classes", optionClasses, headWriter, options);
             }
-            //using (var treeWriter = new StreamWriter(Path.Combine(optionClassesOutputDir, "cheatsheet.md"), false))
-            //{
-            //    writer.WriteHead("Option class references", treeWriter);
-            //    writer.WriteTree("CHEAT SHEET", optionClasses, treeWriter, options);
-            //}
-            writer.WriteOptionClasses(optionClasses, classes, enums, optionClassesOutputDir, options);
+            using (var treeWriter = new StreamWriter(Path.Combine(optionClassesOutputDir, "cheatsheet.md"), false))
+            {
+                optionsClassesWriter.WriteHead("Option class references", treeWriter);
+                optionsClassesWriter.WriteCheatSheet("CHEAT SHEET", optionClasses, treeWriter, options);
+            }
+            optionsClassesWriter.WriteOptionClasses(optionClasses, classes, enums, optionClassesOutputDir, options);
+
+            /* ======================================================================== */
+
+            var serviceRegistrationsOutputDir = Path.Combine(outputDir, "ServiceRegistrations");
+            if (!Directory.Exists(serviceRegistrationsOutputDir))
+                Directory.CreateDirectory(serviceRegistrationsOutputDir);
+
+            var serviceRegistrationsWriter = forBackend
+                ? (SvcRegWriter)new SvcRegBackendWriter()
+                : new SvcRegFrontendWriter();
+
+            using (var headWriter = new StreamWriter(Path.Combine(serviceRegistrationsOutputDir, "configuration-index.md"), false))
+            {
+                serviceRegistrationsWriter.WriteHead("Service registration references", headWriter);
+                serviceRegistrationsWriter.WriteIndex("Service registrations", serviceRegistrationMethods, headWriter, options);
+            }
+            using (var treeWriter = new StreamWriter(Path.Combine(serviceRegistrationsOutputDir, "cheatsheet.md"), false))
+            {
+                serviceRegistrationsWriter.WriteHead("Service registration references", treeWriter);
+                serviceRegistrationsWriter.WriteCheatSheet("CHEAT SHEET", serviceRegistrationMethods, treeWriter, options);
+            }
+            serviceRegistrationsWriter.WriteServiceRegistrations(serviceRegistrationMethods, classes, enums, serviceRegistrationsOutputDir, options);
         }
     }
 }
