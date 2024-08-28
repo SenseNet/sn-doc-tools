@@ -251,17 +251,14 @@ namespace SnDocumentGenerator
                     lastClass = fullClassName;
                     writer.WriteLine(fullClassName);
                 }
-                writer.WriteLine("            {0}", item.GetMethodSignature(false));
-                if (!string.IsNullOrEmpty(item.Documentation))
-                {
-                    writer.WriteLine("                DOC: '{0}'", item.Documentation);
-                }
+                writer.Write("            {0}", item.GetMethodSignature(false));
+                if(item.TypeParams.Length == 0)
+                    writer.WriteLine();
                 foreach (var typeParam in item.TypeParams)
                 {
-                    writer.WriteLine("                {0} ({1}): DOC: '{2}'",
+                    writer.WriteLine(" where {0} : {1}",
                         typeParam.Name,
-                        string.Join(", ", typeParam.Constraints),
-                        typeParam.Documentation);
+                        string.Join(", ", typeParam.Constraints));
                 }
                 foreach (var registration in item.Registrations)
                 {
@@ -407,7 +404,7 @@ namespace SnDocumentGenerator
                 ? (SvcRegWriter)new SvcRegBackendWriter()
                 : new SvcRegFrontendWriter();
 
-            using (var headWriter = new StreamWriter(Path.Combine(serviceRegistrationsOutputDir, "configuration-index.md"), false))
+            using (var headWriter = new StreamWriter(Path.Combine(serviceRegistrationsOutputDir, "serviceregistrations-index.md"), false))
             {
                 serviceRegistrationsWriter.WriteHead("Service registration references", headWriter);
                 serviceRegistrationsWriter.WriteIndex("Service registrations", serviceRegistrationMethods, headWriter, options);

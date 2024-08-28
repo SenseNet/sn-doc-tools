@@ -14,13 +14,87 @@ public class ServiceRegistrationCallingInfo
 {
     public string Name { get; set; }
     public string[] TypeParameters { get; set; }
-    public ArgumentListSyntax Parameters { get; set; }
+    private ArgumentListSyntax _parameters;
+
+    public ArgumentListSyntax Parameters
+    {
+        get => _parameters;
+        set
+        {
+            _parameters = value;
+            ParsedParameters = ParseParameters();
+        }
+    }
+
+    private IEnumerable<string> ParseParameters()
+    {
+        var parsedParameters = new List<string>();
+        if (Parameters.Arguments.Any())
+        {
+            var parameters = Parameters.Arguments.ToArray();
+            var parameterTypes = parameters.Select(x => x.Expression.Kind()).ToArray();
+            if (Name == "Configure")
+            {
+                int q = 0;
+            }
+            if (Name == "AddTransient")
+            {
+                int q = 0;
+            }
+
+            foreach (var prm in parameters)
+            {
+                if (prm.Expression is SimpleLambdaExpressionSyntax lambda)
+                {
+                    var lambdaParameter = lambda.Parameter;
+                    parsedParameters.Add($"{lambda.Parameter} => ...");
+                }
+                else if (prm.Expression is InvocationExpressionSyntax invocation)
+                {
+                    var src = invocation.ToString();
+                    parsedParameters.Add(src.Contains(".GetSection(") ? src : "...");
+                }
+                else if (prm.Expression is ObjectCreationExpressionSyntax creation)
+                {
+                    string name = null;
+                    var nameSyntax = creation.Type as SimpleNameSyntax;
+                    if (nameSyntax != null)
+                    {
+                        name = nameSyntax.Identifier.ToString();
+                    }
+                    var pts = creation.Type as PredefinedTypeSyntax;
+                    if (pts != null)
+                    {
+                        name = pts.Keyword.ToString();
+                    }
+
+                    parsedParameters.Add($"new {name ?? "____"}{{...}}");
+                }
+                else if (prm.Expression is LiteralExpressionSyntax literal)
+                {
+                    parsedParameters.Add(literal.ToFullString());
+                }
+                else if (prm.Expression is IdentifierNameSyntax identifierName)
+                {
+                    parsedParameters.Add(identifierName.ToString());
+                }
+                else
+                {
+                    parsedParameters.Add("...");
+                }
+            }
+        }
+
+        return parsedParameters;
+    }
+
+    public IEnumerable<string> ParsedParameters { get; set; }
 
     public override string ToString()
     {
         return $"{Name}" +
                $"{(TypeParameters.Length > 0 ? $"<{string.Join(", ", TypeParameters)}>" : string.Empty)}" +
-               $"({string.Join(", ", Parameters.Arguments.Select(_ => "..."))})";
+               $"({string.Join(", ", ParsedParameters)})";
     }
 }
 
@@ -44,7 +118,7 @@ public class ServiceRegistrationMethodInfo
     public MethodDeclarationSyntax Method { get; set; }
     public TypeParameterInfo[] TypeParams { get; set; }
     public List<OperationParameterInfo> Parameters { get; set; } = new List<OperationParameterInfo>();
-    public OperationParameterInfo ReturnValue { get; } = new OperationParameterInfo();
+    public OperationParameterInfo ReturnValue { get; set; } = new OperationParameterInfo();
     public ServiceRegistrationCallingInfo[] Registrations { get; set; }
     public string Namespace { get; set; }
     public string ClassName { get; set; }
@@ -54,6 +128,21 @@ public class ServiceRegistrationMethodInfo
 
 
     public string File { get; set; }
+
+    private string _fileRelative;
+    public string FileRelative
+    {
+        get
+        {
+            if (_fileRelative == null)
+            {
+                var x = File.IndexOf("\\src\\", StringComparison.OrdinalIgnoreCase);
+                _fileRelative = File.Substring(x + 4);
+            }
+            return _fileRelative;
+        }
+    }
+
     private string _githubRepository;
     public string GithubRepository
     {
@@ -132,7 +221,8 @@ public class ServiceRegistrationMethodInfo
         ParseExamples(xml);
         ParseExceptions(xml);
 
-        var text = xml.DocumentElement.InnerXml;
+        var text = xml.DocumentElement.InnerText
+            .Replace("<![CDATA[", "").Replace("]]>", "");
 
         text = NormalizeWhitespaces(text);
 
