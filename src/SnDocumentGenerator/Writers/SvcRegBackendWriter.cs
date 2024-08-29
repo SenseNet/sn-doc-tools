@@ -32,9 +32,10 @@ internal class SvcRegBackendWriter : SvcRegWriter
                 reg.GithubRepository,
                 reg.Project.Name,
                 reg.ClassName,
-                reg.MethodSignature
+                "**" + reg.MethodSignature
                     .Replace("<", "&lt;")
-                    .Replace(">", "&gt;"),
+                    .Replace(">", "&gt;")
+                    .Replace("(", "**("),
                 reg.MethodSignatureInLink
             );
         }
