@@ -48,6 +48,19 @@ internal class ServiceRegistrationMethodVisitor : WalkerBase
                 typeParam.Constraints = constraint.Value.ToArray();
         }
 
+        string returnTypeName = null;
+        var nameSyntax = _methodDeclarationSyntax.ReturnType as SimpleNameSyntax;
+        if (nameSyntax != null)
+        {
+            returnTypeName = nameSyntax.Identifier.ToString();
+        }
+        var pts = _methodDeclarationSyntax.ReturnType as PredefinedTypeSyntax;
+        if (pts != null)
+        {
+            returnTypeName = pts.Keyword.ToString();
+        }
+
+
         // Create product
         ServiceRegistrationMethod = new ServiceRegistrationMethodInfo
         {
@@ -55,6 +68,7 @@ internal class ServiceRegistrationMethodVisitor : WalkerBase
             ClassName = className,
             File = _path,
             Method = _methodDeclarationSyntax,
+            ReturnValue = new OperationParameterInfo {Type = returnTypeName},
             TypeParams = typeParams,
             Parameters = ParseParameters(_methodDeclarationSyntax.ParameterList),
             Documentation = documentation,
