@@ -41,8 +41,8 @@ namespace SnDocumentGenerator
 
         private static void Run(Options options)
         {
-            var parser = new OperationParser(options);
-            var parserResult =  parser.Parse();
+            var parser = new CodeFileExplorer(options);
+            var parserResult =  parser.Explore();
             var operations = parserResult.Operations;
             var optionsClasses = parserResult.OptionsClasses.ToArray();
             var allTypes = parserResult.Classes;

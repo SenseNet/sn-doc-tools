@@ -8,18 +8,18 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace SnDocumentGenerator.Parser
 {
-    internal class OperationParser
+    internal class CodeFileExplorer
     {
         private readonly Options _options;
 
-        public OperationParser(Options options)
+        public CodeFileExplorer(Options options)
         {
             _options = options;
         }
 
         public (List<OperationInfo> Operations, List<OptionsClassInfo> OptionsClasses,
             Dictionary<string, ClassInfo> Classes, Dictionary<string, EnumInfo> Enums,
-            List<ServiceRegistrationMethodInfo> ServiceRegistrationMethods) Parse()
+            List<ServiceRegistrationMethodInfo> ServiceRegistrationMethods) Explore()
         {
             var operations = new List<OperationInfo>();
             var optionsClasses = new List<OptionsClassInfo>();
@@ -34,20 +34,20 @@ namespace SnDocumentGenerator.Parser
                 if (Path.GetExtension(input) != ".cs")
                     throw new NotSupportedException("Only csharp file (*.cs extension) is supported.");
                 //rootPath = Path.GetDirectoryName(input);
-                AddOperationsFromFile(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null, _options.ShowAst);
+                AddItemsFromFile(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null, _options.ShowAst);
             }
             else
             {
                 if (!Directory.Exists(input))
                     throw new ArgumentException("Unknown file or directory: " + input);
                 //rootPath = input.TrimEnd('\\', '/');
-                AddOperationsFromDirectory(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null, _options.ShowAst);
+                AddItemsFromDirectory(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null, _options.ShowAst);
             }
 
             return (operations, optionsClasses, classes, enums, serviceRegistrationMethods);
         }
 
-        private void AddOperationsFromDirectory(string root, string path,
+        private void AddItemsFromDirectory(string root, string path,
             List<OperationInfo> operations, List<OptionsClassInfo> optionsClasses,
             Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
             List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
@@ -67,9 +67,9 @@ namespace SnDocumentGenerator.Parser
                 currentProject = CreateProject(projectPath);
 
             foreach (var directory in Directory.GetDirectories(path))
-                AddOperationsFromDirectory(root, directory, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject, showAst);
+                AddItemsFromDirectory(root, directory, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject, showAst);
             foreach (var file in Directory.GetFiles(path, "*.cs"))
-                AddOperationsFromFile(root, file, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject, showAst);
+                AddItemsFromFile(root, file, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject, showAst);
         }
 
         private ProjectInfo CreateProject(string projectPath)
@@ -138,7 +138,7 @@ namespace SnDocumentGenerator.Parser
             return ProjectType.Unknown;
         }
 
-        private void AddOperationsFromFile(string root, string path,
+        private void AddItemsFromFile(string root, string path,
             List<OperationInfo> operations, List<OptionsClassInfo> optionsClasses,
             Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
             List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
