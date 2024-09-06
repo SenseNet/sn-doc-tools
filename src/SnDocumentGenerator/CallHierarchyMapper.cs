@@ -12,14 +12,14 @@ internal class CallHierarchyMapper
         _allTypes = allTypes;
     }
 
-    private readonly string[] _skippedCalls = new[] {"AddSingleton", "AddScoped", "AddTransient"};
+    public static readonly string[] SkippedCalls = new[] {"AddSingleton", "AddScoped", "AddTransient", "Configure", "GetService", "GetRequiredService" };
     public void Map(List<ServiceRegistrationMethodInfo> serviceRegistrationMethods)
     {
         foreach (var serviceRegistrationMethod in serviceRegistrationMethods)
         {
             foreach (var registration in serviceRegistrationMethod.Registrations)
             {
-                if (_skippedCalls.Contains(registration.Name))
+                if (SkippedCalls.Contains(registration.Name))
                     continue;
 
                 var typeParamMutations = GetTypeParamMutations(registration.TypeParameters);
@@ -29,7 +29,20 @@ internal class CallHierarchyMapper
                     .Where(m => IsTypeParamsMatched(m, typeParamMutations))
                     .ToArray();
 
-                if (registration.TypeParameters.Length == 1)
+                if (registration.TypeParameters.Length == 0)
+                {
+                    if (!registration.ParsedParameters.Any())
+                    {
+                        var parameterLessCandidates = calledMethodCandidates
+                            .Where(m => m.Parameters.Count(p => !p.IsOptional) == 1)
+                            .ToArray();
+                        if (parameterLessCandidates.Length == 1)
+                        {
+                            SetCaller(parameterLessCandidates[0], serviceRegistrationMethod, registration);
+                        }
+                    }
+                }
+                else if (registration.TypeParameters.Length == 1)
                 {
                     if (calledMethodCandidates.Length > 1)
                     {
@@ -41,16 +54,14 @@ internal class CallHierarchyMapper
                             {
                                 var candidate = calledMethodCandidates.FirstOrDefault(x => x.Parameters[1].Type == "string");
                                 if(candidate != null)
-                                    if (!candidate.CalledBy.Contains(serviceRegistrationMethod))
-                                        candidate.CalledBy.Add(serviceRegistrationMethod);
+                                    SetCaller(candidate, serviceRegistrationMethod, registration);
                             }
                             // hardcoded: MapMiddlewareWhen<T>(this IApplicationBuilder builder, Func<HttpContext, bool> predicate, ...
                             if (registration.Parameters.Arguments[0].Expression.GetType().Name == "IdentifierNameSyntax")
                             {
                                 var candidate = calledMethodCandidates.FirstOrDefault(x => x.Parameters[1].Type == "Func<HttpContext, bool>");
                                 if (candidate != null)
-                                    if (!candidate.CalledBy.Contains(serviceRegistrationMethod))
-                                        candidate.CalledBy.Add(serviceRegistrationMethod);
+                                    SetCaller(candidate, serviceRegistrationMethod, registration);
                             }
                         }
                     }
@@ -58,11 +69,10 @@ internal class CallHierarchyMapper
                     {
                         // add serviceRegistrationMethod to calledMethodCandidates as a caller
                         foreach (var calledMethodCandidate in calledMethodCandidates)
-                            if (!calledMethodCandidate.CalledBy.Contains(serviceRegistrationMethod))
-                                calledMethodCandidate.CalledBy.Add(serviceRegistrationMethod);
+                            SetCaller(calledMethodCandidate, serviceRegistrationMethod, registration);
                     }
                 }
-                else if(registration.TypeParameters.Length > 1)
+                else //if(registration.TypeParameters.Length > 1)
                 {
                     //throw new NotImplementedException();
                 }
@@ -70,11 +80,20 @@ internal class CallHierarchyMapper
         }
     }
 
+    private void SetCaller(ServiceRegistrationMethodInfo target, ServiceRegistrationMethodInfo caller, ServiceRegistrationCallingInfo call)
+    {
+        call.TargetId = target.Id;
+        if (!target.CalledBy.Contains(caller))
+            target.CalledBy.Add(caller);
+    }
+
     private readonly string[] _skippedConstraints = new[] {"class"};
     private bool IsTypeParamsMatched(ServiceRegistrationMethodInfo serviceRegistrationMethodInfo, string[][] typeParamMutations)
     {
         if (serviceRegistrationMethodInfo.TypeParams.Length == 0)
         {
+            if (typeParamMutations.Length == 0)
+                return true;
             // not supported?
             return false;
         }

@@ -274,19 +274,22 @@ namespace SnDocumentGenerator
                     writer.WriteLine(fullClassName);
                 }
 
-                writer.WriteLine("            {0}", item.GetMethodSignature(false, true));
+                writer.WriteLine("            {0} (Id: {1})", item.GetMethodSignature(false, true), item.Id);
 
                 if (item.Registrations.Length > 0)
                 {
                     writer.WriteLine("                Calls:");
                     foreach (var registration in item.Registrations)
-                        writer.WriteLine("                    {0}", registration);
+                        if(CallHierarchyMapper.SkippedCalls.Contains(registration.Name))
+                            writer.WriteLine("                    {0}", registration);
+                        else
+                            writer.WriteLine("                    {0} (TargetId: {1})", registration, registration.TargetId);
                 }
                 if (item.CalledBy.Count > 0)
                 {
                     writer.WriteLine("                Called by:");
                     foreach (var parent in item.CalledBy)
-                        writer.WriteLine("                    {0}", parent.GetMethodSignature(false, true));
+                        writer.WriteLine("                    {0} (Id: {1})", parent.GetMethodSignature(false, true), parent.Id);
                 }
             }
         }

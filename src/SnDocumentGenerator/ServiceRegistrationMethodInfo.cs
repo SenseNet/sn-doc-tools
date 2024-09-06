@@ -12,6 +12,7 @@ namespace SnDocumentGenerator;
 public class ServiceRegistrationCallingInfo
 {
     public string Name { get; set; }
+    public int TargetId { get; set; }
     public string[] TypeParameters { get; set; }
     private ArgumentListSyntax _parameters;
 
@@ -105,8 +106,16 @@ public class TypeParameterInfo
 
 public class ServiceRegistrationMethodInfo
 {
+    private static int CurrentId;
+
+    public ServiceRegistrationMethodInfo()
+    {
+        Id = ++CurrentId;
+    }
+
     public static readonly string[] ExtensionTargets = new[] { "IServiceCollection", "IServiceProvider", "IApplicationBuilder" };
 
+    public int Id { get; }
     public MethodDeclarationSyntax Method { get; set; }
     public bool IsPublic { get; set; }
     public TypeParameterInfo[] TypeParams { get; set; }
