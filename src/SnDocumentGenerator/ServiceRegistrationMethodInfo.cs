@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using SnDocumentGenerator.Parser;
 
 namespace SnDocumentGenerator;
 
@@ -33,14 +32,6 @@ public class ServiceRegistrationCallingInfo
         {
             var parameters = Parameters.Arguments.ToArray();
             var parameterTypes = parameters.Select(x => x.Expression.Kind()).ToArray();
-            if (Name == "Configure")
-            {
-                int q = 0;
-            }
-            if (Name == "AddTransient")
-            {
-                int q = 0;
-            }
 
             foreach (var prm in parameters)
             {
@@ -99,12 +90,11 @@ public class ServiceRegistrationCallingInfo
 }
 
 [DebuggerDisplay("{ToString()}")]
-
 public class TypeParameterInfo
 {
     public string Name { get; set; }
     public string Variance { get; set; }
-    public string[] Constraints { get; set; }
+    public string[] Constraints { get; set; } = Array.Empty<string>();
     public string Documentation { get; set; }
 
     public override string ToString()
@@ -115,17 +105,33 @@ public class TypeParameterInfo
 
 public class ServiceRegistrationMethodInfo
 {
+    public static readonly string[] ExtensionTargets = new[] { "IServiceCollection", "IServiceProvider", "IApplicationBuilder" };
+
     public MethodDeclarationSyntax Method { get; set; }
+    public bool IsPublic { get; set; }
     public TypeParameterInfo[] TypeParams { get; set; }
     public List<OperationParameterInfo> Parameters { get; set; } = new List<OperationParameterInfo>();
     public OperationParameterInfo ReturnValue { get; set; } = new OperationParameterInfo();
     public ServiceRegistrationCallingInfo[] Registrations { get; set; }
+    public List<ServiceRegistrationMethodInfo> CalledBy { get; } = new();
     public string Namespace { get; set; }
     public string ClassName { get; set; }
     public ProjectInfo Project { get; set; }
     public string Category { get; set; }
     public string CategoryInLink { get; set; }
 
+    private string _extensionTarget;
+    public string ExtensionTarget => _extensionTarget ??= (Parameters.FirstOrDefault()?.Type ?? "unknown");
+
+    public string MethodNamePostfix
+    {
+        get
+        {
+            if (ExtensionTarget == ExtensionTargets[1]) return "_P";
+            if (ExtensionTarget == ExtensionTargets[2]) return "_A";
+            return string.Empty;
+        }
+    }
 
     public string File { get; set; }
 
@@ -166,14 +172,24 @@ public class ServiceRegistrationMethodInfo
     }
 
     private string _methodSignature;
-    public string MethodSignature => _methodSignature ??= GetMethodSignature(true);
+    public string MethodSignature => _methodSignature ??= GetMethodSignature(true, false);
 
     private string _methodSignatureInLink;
     public string MethodSignatureInLink => _methodSignatureInLink ??= GetMethodSignatureInLink(true);
 
-    public string GetMethodSignature(bool skipFirst)
+    public string GetMethodSignature(bool skipFirst, bool withConstraints)
     {
-        return $"{Method.Identifier}{Method.TypeParameterList}{FormatParameterList(Method.ParameterList, skipFirst)}";
+        var constraints = withConstraints ? FormatConstraints() : string.Empty;
+        return $"{Method.Identifier}" +
+               $"{Method.TypeParameterList}" +
+               $"{FormatParameterList(Method.ParameterList, skipFirst)}" +
+               $"{constraints}";
+    }
+    private string FormatConstraints()
+    {
+        return string.Join(", ",
+            this.TypeParams.Select(typeParam =>
+                $" where {typeParam.Name} : {string.Join(", ", typeParam?.Constraints ?? Array.Empty<string>())}"));
     }
     private string FormatParameterList(ParameterListSyntax parameters, bool skipFirst)
     {
@@ -182,7 +198,7 @@ public class ServiceRegistrationMethodInfo
     private string GetMethodSignatureInLink(bool skipFirst)
     {
         return
-            $"{Method.Identifier}{Method.TypeParameterList}{FormatParameterListInLink(Method.ParameterList, skipFirst)}"
+            $"{Method.Identifier}{MethodNamePostfix}{Method.TypeParameterList}{FormatParameterListInLink(Method.ParameterList, skipFirst)}"
                 .Replace(" ", "")
                 .Replace("<", "_")
                 .Replace(">", "")

@@ -19,16 +19,18 @@ internal class SvcRegBackendWriter : SvcRegWriter
         //    .OrderBy(o => o.Category, new CategoryComparer())
         //    .ThenBy(o => o.ClassName);
         var ordered = srm
-            .OrderBy(x => x.GithubRepository)
+            .OrderBy(x => x.MethodNamePostfix)
+            .ThenBy(x => x.GithubRepository)
             .ThenBy(x => x.Project.Name)
             .ThenBy(x => x.ClassName)
             .ThenBy(x => x.MethodSignature);
 
-        output.WriteLine("| Category | Project | Class | Method |");
-        output.WriteLine("| -------- | ------- | ----- | ------ |");
+        output.WriteLine("| Category | Repository | Project | Class | Method |");
+        output.WriteLine("| -------- | ---------- | ------- | ----- | ------ |");
         foreach (var reg in ordered)
         {
-            output.WriteLine("| {0} | {1} | {2} | [{3}](/services/{0}/{4}) |",
+            output.WriteLine("| {0} | {1} | {2} | {3} | [{4}](/services/{1}/{5}) |",
+                reg.ExtensionTarget,
                 reg.GithubRepository,
                 reg.Project.Name,
                 reg.ClassName,
@@ -114,6 +116,7 @@ internal class SvcRegBackendWriter : SvcRegWriter
 
         var head = new List<string>
             {
+                $"Extension method of `{reg.ExtensionTarget}`",
                 $"- Repository: **{reg.GithubRepository}**",
                 $"- Project: **{reg.Project.Name}**",
                 $"- File: **{reg.FileRelative}**",
@@ -149,14 +152,14 @@ internal class SvcRegBackendWriter : SvcRegWriter
             var hasParameter = false;
             foreach (var prm in reg.Parameters)
             {
-                if(prm.Type != "IServiceCollection") // hide fluent api input
+                if(!ServiceRegistrationMethodInfo.ExtensionTargets.Contains(prm.Type)) // hide fluent api input
                 {
                     output.WriteLine("- **{0}** ({1}){2}: {3}", prm.Name, prm.Type.FormatType(),
                         prm.IsOptional ? " optional" : "", prm.Documentation);
                     hasParameter = true;
                 }
             }
-            if (reg.ReturnValue.Type != "void" && reg.ReturnValue.Type != "IServiceCollection")
+            if (reg.ReturnValue.Type != "void" && !ServiceRegistrationMethodInfo.ExtensionTargets.Contains(reg.ReturnValue.Type))
             {
                 output.WriteLine("- **Return value** ({0}): {1}", reg.ReturnValue.Type.FormatType(),
                     reg.ReturnValue.Documentation);
@@ -175,6 +178,16 @@ internal class SvcRegBackendWriter : SvcRegWriter
             foreach (var callingInfo in reg.Registrations)
             {
                 output.WriteLine(callingInfo.ToString());
+            }
+            output.WriteLine("```");
+        }
+        if (0 < reg.CalledBy.Count)
+        {
+            output.WriteLine("### Called by:");
+            output.WriteLine("```csharp");
+            foreach (var callerInfo in reg.CalledBy)
+            {
+                output.WriteLine(callerInfo.MethodSignature);
             }
             output.WriteLine("```");
         }

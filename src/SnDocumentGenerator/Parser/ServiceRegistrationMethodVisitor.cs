@@ -60,7 +60,6 @@ internal class ServiceRegistrationMethodVisitor : WalkerBase
             returnTypeName = pts.Keyword.ToString();
         }
 
-
         // Create product
         ServiceRegistrationMethod = new ServiceRegistrationMethodInfo
         {
@@ -68,6 +67,7 @@ internal class ServiceRegistrationMethodVisitor : WalkerBase
             ClassName = className,
             File = _path,
             Method = _methodDeclarationSyntax,
+            IsPublic = _methodDeclarationSyntax.Modifiers.ToString().Contains("public"),
             ReturnValue = new OperationParameterInfo {Type = returnTypeName},
             TypeParams = typeParams,
             Parameters = ParseParameters(_methodDeclarationSyntax.ParameterList),
@@ -144,7 +144,7 @@ internal class ServiceRegistrationMethodVisitor : WalkerBase
         if (node.Expression is IdentifierNameSyntax identifier)
         {
             var typeName = ModelExtensions.GetSymbolInfo(_semanticModel, identifier).Symbol?.ToString();
-            if (typeName == "IServiceCollection")
+            if (ServiceRegistrationMethodInfo.ExtensionTargets.Contains(typeName))
             {
                 SyntaxNode n = node;
                 MemberAccessExpressionSyntax currentMemberAccess = node;
