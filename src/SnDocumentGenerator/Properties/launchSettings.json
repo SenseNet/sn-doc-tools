@@ -2,8 +2,8 @@
   "profiles": {
     "SnDocumentGenerator": {
       "commandName": "Project",
-      //"commandLineArgs": "D:\\dev\\github D:\\dev\\sn-doc-generated\\2024-09-02\\sensenet-ecosystem"
-      "commandLineArgs": "D:\\dev\\github\\sensenet D:\\dev\\sn-doc-generated\\2024-09-02\\sensenet"
+      "commandLineArgs": "D:\\dev\\github D:\\dev\\sn-doc-generated\\2024-09-02\\sensenet-ecosystem"
+      //"commandLineArgs": "D:\\dev\\github\\sensenet D:\\dev\\sn-doc-generated\\2024-09-02\\sensenet"
       //"commandLineArgs": "D:\\dev\\github\\sensenet\\src\\Abstractions D:\\dev\\sn-doc-generated\\2024-09-02\\sensenet-abstractions"
       //"commandLineArgs": "D:\\dev\\github\\sensenet\\src\\BlobStorage D:\\dev\\sn-doc-generated\\2024-09-02\\sensenet-blobstorage"
       //"commandLineArgs": "D:\\dev\\github\\sensenet\\src\\ContentRepository D:\\dev\\sn-doc-generated\\2024-09-02\\sensenet-contentrepository"
