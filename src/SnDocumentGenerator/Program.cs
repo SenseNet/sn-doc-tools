@@ -23,7 +23,6 @@ namespace SnDocumentGenerator
                 Input = args[0],
                 Output = args[1],
                 All = args.Contains("-all", StringComparer.OrdinalIgnoreCase),
-                ShowAst = false,
             };
             if (args.Contains("-op", StringComparer.OrdinalIgnoreCase))
                 options.FileLevel = FileLevel.Operation;
@@ -41,16 +40,17 @@ namespace SnDocumentGenerator
 
         private static void Run(Options options)
         {
-            var parser = new OperationParser(options);
-            var parserResult =  parser.Parse();
+            var parser = new CodeFileExplorer(options);
+            var parserResult =  parser.Explore();
             var operations = parserResult.Operations;
             var optionsClasses = parserResult.OptionsClasses.ToArray();
-            var classes = parserResult.Classes;
+            var allTypes = parserResult.Classes;
             var enums = parserResult.Enums;
             var serviceRegistrationMethods = parserResult.ServiceRegistrationMethods;
 
             Console.WriteLine(" ".PadRight(Console.BufferWidth - 1));
 
+            Console.Write("Finalize operation structures ...");
             operations = operations
                 .Where(x => x.IsValid)
                 //.Where(x=> !string.IsNullOrEmpty(x.Documentation))
@@ -61,14 +61,23 @@ namespace SnDocumentGenerator
             var coreOps = operations.Except(testOps).Except(fwOps).ToArray();
 
             SetOperationLinks(options.All ? operations : coreOps);
+            Console.WriteLine(" ok");
+
+            Console.Write("Mapping extension method call hierarchy ...");
+            var mapper = new CallHierarchyMapper(allTypes);
+            mapper.Map(serviceRegistrationMethods);
+            Console.WriteLine(" ok");
 
             using (var writer = new StreamWriter(Path.Combine(options.Output, "generation.txt"), false))
-                WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses, serviceRegistrationMethods);
+                WriteGenerationInfo(writer, options, operations, coreOps, ref optionsClasses, serviceRegistrationMethods, mapper);
 
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, serviceRegistrationMethods, classes, enums, false, options);
-            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, serviceRegistrationMethods, classes, enums, true, options);
+            Console.Write("Writing frontend files ...");
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, serviceRegistrationMethods, allTypes, enums, false, options);
+            Console.WriteLine(" ok");
+            Console.Write("Writing backend files ...");
+            WriteOutput(operations, coreOps, fwOps, testOps, optionsClasses, serviceRegistrationMethods, allTypes, enums, true, options);
+            Console.WriteLine(" ok");
         }
-
         private static void SetOperationLinks(IEnumerable<OperationInfo> operations)
         {
             var ops = new Dictionary<string, OperationInfo>();
@@ -85,13 +94,15 @@ namespace SnDocumentGenerator
             }
         }
 
+        private static readonly string HorizontalLine = "--------------------------------------------------------";
         private static void WriteGenerationInfo(TextWriter writer, Options options,
             List<OperationInfo> operations, OperationInfo[] coreOps, ref OptionsClassInfo[] optionClasses,
-            List<ServiceRegistrationMethodInfo> serviceRegistrationMethods)
+            List<ServiceRegistrationMethodInfo> serviceRegistrationMethods, CallHierarchyMapper callHierarchyMapper)
         {
-            writer.WriteLine("Path:            {0}", options.Input);
-            writer.WriteLine("Operations:      {0}", operations.Count);
-            writer.WriteLine("Options classes: {0}", optionClasses.Length);
+            writer.WriteLine("Path:              {0}", options.Input);
+            writer.WriteLine("Operations:        {0}", operations.Count);
+            writer.WriteLine("Options classes:   {0}", optionClasses.Length);
+            writer.WriteLine("Extension methods: {0}", serviceRegistrationMethods.Count);
 
             var issuedOperations = new List<(OperationInfo op, List<string> parameters)>();
             foreach (var op in coreOps)
@@ -107,7 +118,7 @@ namespace SnDocumentGenerator
                 if (parameters.Count > 1)
                     issuedOperations.Add((op, parameters));
             }
-            var issuedOptionsClasses = new List<(OptionsClassInfo op, List<string> properties)>();
+            var issuedOptionsClasses = new List<(OptionsClassInfo oc, List<string> properties)>();
             foreach (var oc in optionClasses)
             {
                 var properties = new List<string>();
@@ -119,7 +130,27 @@ namespace SnDocumentGenerator
                 if (properties.Count > 0)
                     issuedOptionsClasses.Add((oc, properties));
             }
+            var issuedExtensionMethods = new List<(ServiceRegistrationMethodInfo reg, List<string> properties)>();
+            foreach (var reg in serviceRegistrationMethods)
+            {
+                var properties = new List<string>();
+                if (string.IsNullOrEmpty(reg.Documentation))
+                    properties.Add("<method summary>");
+                foreach (var typeParam in reg.TypeParams)
+                    if (string.IsNullOrEmpty(typeParam.Documentation))
+                        properties.Add($"<typeParam: {typeParam.Name}>");
+                foreach (var parameter in reg.Parameters.Skip(1))
+                    if (string.IsNullOrEmpty(parameter.Documentation))
+                        properties.Add(parameter.Name);
+                if (properties.Count > 0)
+                    issuedExtensionMethods.Add((reg, properties));
+            }
+            writer.WriteLine();
 
+            // -------------------------------------------------------------------------------------
+
+            writer.WriteLine(HorizontalLine);
+            writer.WriteLine("MISSING DOCUMENTATION");
             writer.WriteLine();
             writer.WriteLine($"Missing documentation of operations (except the first 'content' parameter) (count: {issuedOperations.Count}):");
             writer.WriteLine("File\tMethodName\tParameter");
@@ -133,66 +164,43 @@ namespace SnDocumentGenerator
             writer.WriteLine("File\tClassName\tProperty");
             foreach (var item in issuedOptionsClasses)
             {
-                writer.WriteLine("'{0}'\t{1}\t{2}", item.op.File, item.op.ClassName, string.Join(", ", item.properties));
+                writer.WriteLine("'{0}'\t{1}\t{2}", item.oc.File, item.oc.ClassName, string.Join(", ", item.properties));
             }
 
+            writer.WriteLine();
+            writer.WriteLine($"Missing documentation of extension methods (count: {issuedExtensionMethods.Count}):");
+            writer.WriteLine("File\tClassName\tProperty");
+            foreach (var item in issuedExtensionMethods)
+            {
+                writer.WriteLine("'{0}'\t{1}\t{2}", item.reg.File, item.reg.Method.Identifier.Text, string.Join(", ", item.properties));
+            }
+            writer.WriteLine();
+
+            // -------------------------------------------------------------------------------------
             var problems = GetOptionsClassProblems(ref optionClasses);
             if (problems.Any())
             {
-                writer.WriteLine();
+                writer.WriteLine(HorizontalLine);
                 foreach (var message in problems)
                     writer.WriteLine(message);
+                writer.WriteLine();
             }
 
-            //writer.WriteLine();
-            //writer.WriteLine("Unnecessary doc of requested resource (content parameter):");
-            //writer.WriteLine("File\tMethodName\tDescription of content param");
-            //foreach (var op in coreOps)
-            //{
-            //    var desc = op.Parameters[0].Documentation;
-            //    if (!string.IsNullOrEmpty(desc))
-            //        writer.WriteLine("'{0}'\t{1}\t{2}", op.File, op.MethodName, desc);
-            //}
+            // -------------------------------------------------------------------------------------
 
-            writer.WriteLine();
-            writer.WriteLine("Operation descriptions:");
+            writer.WriteLine(HorizontalLine);
+            writer.WriteLine("Operation descriptions in attributes:");
             writer.WriteLine("Description\tMethodName\tFile");
             foreach (var op in coreOps)
             {
                 if (!string.IsNullOrEmpty(op.Description))
                     writer.WriteLine("'{0}'\t{1}\t{2}", op.Description, op.MethodName, op.File);
             }
-
             writer.WriteLine();
-            writer.WriteLine("Functions and parameters:");
-            writer.WriteLine("File\tMethodName\tParameters");
-            foreach (var op in coreOps)
-            {
-                if (!op.IsAction)
-                    writer.WriteLine("{0}\t{1}\t{2}", op.File, op.MethodName,
-                        string.Join(", ", op.Parameters.Skip(1).Select(x => $"{x.Type} {x.Name}")));
-            }
 
-            writer.WriteLine();
-            writer.WriteLine("Actions and parameters:");
-            writer.WriteLine("File\tMethodName\tParameters");
-            foreach (var op in coreOps)
-            {
-                if (op.IsAction)
-                    writer.WriteLine("{0}\t{1}\t{2}", op.File, op.MethodName,
-                        string.Join(", ", op.Parameters.Skip(1).Select(x => $"{x.Type} {x.Name}")));
-            }
+            // -------------------------------------------------------------------------------------
 
-            writer.WriteLine();
-            writer.WriteLine("Options classes and properties:");
-            writer.WriteLine("File\tClassName\tProperties");
-            foreach (var oc in optionClasses)
-            {
-                writer.WriteLine("{0}\t{1}\t{2}", oc.File, oc.ClassName,
-                    string.Join(", ", oc.Properties.Select(x => $"{x.Type} {x.Name}")));
-            }
-
-            writer.WriteLine();
+            writer.WriteLine(HorizontalLine);
             writer.WriteLine("ODATA CHEAT SHEET:");
             foreach (var opGroup in coreOps.GroupBy(x => x.Category).OrderBy(x => x.Key))
             {
@@ -209,8 +217,11 @@ namespace SnDocumentGenerator
                         OperationFrontendWriter.GetFrontendType(op.ReturnValue.Type).Replace("`", ""));
                 }
             }
-            
             writer.WriteLine();
+
+            // -------------------------------------------------------------------------------------
+
+            writer.WriteLine(HorizontalLine);
             writer.WriteLine("OPTION CLASSES CHEAT SHEET:");
             foreach (var optionsClass in optionClasses)
             {
@@ -224,9 +235,19 @@ namespace SnDocumentGenerator
                         property.Initializer ?? "");
                 }
             }
-
             writer.WriteLine();
-            writer.WriteLine("SERVICE REGISTRATION CHEAT SHEET:");
+
+            // -------------------------------------------------------------------------------------
+
+            writer.WriteLine(HorizontalLine);
+            writer.WriteLine("EXTENSION METHODS CHEAT SHEET (PUBLIC):");
+            WriteExtensionMethodsCheatSheet(writer, serviceRegistrationMethods.Where(x => x.IsPublic));
+            writer.WriteLine("EXTENSION METHODS CHEAT SHEET (INTERNAL):");
+            WriteExtensionMethodsCheatSheet(writer, serviceRegistrationMethods.Where(x => !x.IsPublic));
+        }
+
+        private static void WriteExtensionMethodsCheatSheet(TextWriter writer, IEnumerable<ServiceRegistrationMethodInfo> serviceRegistrationMethods)
+        {
             var lastRepo = string.Empty;
             var lastProject = string.Empty;
             var lastClass = string.Empty;
@@ -251,21 +272,27 @@ namespace SnDocumentGenerator
                     lastClass = fullClassName;
                     writer.WriteLine(fullClassName);
                 }
-                writer.Write("            {0}", item.GetMethodSignature(false));
-                if(item.TypeParams.Length == 0)
-                    writer.WriteLine();
-                foreach (var typeParam in item.TypeParams)
+
+                writer.WriteLine("            {0} (Id: {1})", item.GetMethodSignature(false, true), item.Id);
+
+                if (item.Registrations.Length > 0)
                 {
-                    writer.WriteLine(" where {0} : {1}",
-                        typeParam.Name,
-                        string.Join(", ", typeParam.Constraints));
+                    writer.WriteLine("                Calls:");
+                    foreach (var registration in item.Registrations)
+                        if(CallHierarchyMapper.SkippedCalls.Contains(registration.Name))
+                            writer.WriteLine("                    {0}", registration);
+                        else
+                            writer.WriteLine("                    {0} (TargetId: {1})", registration, registration.TargetId);
                 }
-                foreach (var registration in item.Registrations)
+                if (item.CalledBy.Count > 0)
                 {
-                    writer.WriteLine("                {0}", registration);
+                    writer.WriteLine("                Called by:");
+                    foreach (var parent in item.CalledBy)
+                        writer.WriteLine("                    {0} (Id: {1})", parent.GetMethodSignature(false, true), parent.Id);
                 }
             }
         }
+
         private static string FormatParameterList(ParameterListSyntax parameters)
         {
             return $"({string.Join(", ", parameters.Parameters.Select(x => x.ToString()))})";
@@ -327,7 +354,7 @@ namespace SnDocumentGenerator
             OperationInfo[] coreOps, OperationInfo[] fwOps, OperationInfo[] testOps,
             OptionsClassInfo[] optionClasses,
             List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
-            Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
+            Dictionary<string, ClassInfo> allTypes, Dictionary<string, EnumInfo> enums,
             bool forBackend, Options options)
         {
             var outputDir = Path.Combine(options.Output, forBackend ? "backend" : "frontend");
@@ -392,7 +419,7 @@ namespace SnDocumentGenerator
                 optionsClassesWriter.WriteHead("Option class references", treeWriter);
                 optionsClassesWriter.WriteCheatSheet("CHEAT SHEET", optionClasses, treeWriter, options);
             }
-            optionsClassesWriter.WriteOptionClasses(optionClasses, classes, enums, optionClassesOutputDir, options);
+            optionsClassesWriter.WriteOptionClasses(optionClasses, allTypes, enums, optionClassesOutputDir, options);
 
             /* ======================================================================== */
 
@@ -414,7 +441,7 @@ namespace SnDocumentGenerator
                 serviceRegistrationsWriter.WriteHead("Service registration references", treeWriter);
                 serviceRegistrationsWriter.WriteCheatSheet("CHEAT SHEET", serviceRegistrationMethods, treeWriter, options);
             }
-            serviceRegistrationsWriter.WriteServiceRegistrations(serviceRegistrationMethods, classes, enums, serviceRegistrationsOutputDir, options);
+            serviceRegistrationsWriter.WriteServiceRegistrations(serviceRegistrationMethods, allTypes, enums, serviceRegistrationsOutputDir, options);
         }
     }
 }

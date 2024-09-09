@@ -12,12 +12,14 @@ namespace SnDocumentGenerator
         public bool IsInterface { get; set; }
         public bool IsStruct { get; set; }
         public string Documentation { get; set; }
-        public List<OptionsPropertyInfo> Properties { get; } = new List<OptionsPropertyInfo>();
+        public List<OptionsPropertyInfo> Properties { get; } = new();
         public ProjectInfo Project { get; set; }
         public string File { get; set; }
         public string Namespace { get; set; }
+        public string FullTypeName { get; set; }
         public string ClassName { get; set; }
         public string ClassNameInLink => ClassName;
+        public string[] BaseList { get; set; } = [];
         public string Category { get; set; }
         public string CategoryInLink { get; set; }
         public string ProjectName => Project?.Name ?? "";

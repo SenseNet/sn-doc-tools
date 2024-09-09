@@ -10,10 +10,6 @@ namespace SnDocumentGenerator.Parser
         public string Name { get; private set; }
         public string Value { get; private set; }
 
-        public AttributeArgumentWalker(bool showAst) : base(showAst)
-        {
-        }
-
         public override void VisitLiteralExpression(LiteralExpressionSyntax node)
         {
             Value = node.ToString();

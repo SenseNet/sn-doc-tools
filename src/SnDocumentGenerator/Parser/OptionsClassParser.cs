@@ -89,7 +89,7 @@ namespace SnDocumentGenerator.Parser
         {
             foreach (var attrArg in node.Arguments)
             {
-                var visitor = new AttributeArgumentWalker(false);
+                var visitor = new AttributeArgumentWalker();
                 visitor.Visit(attrArg);
                 return visitor.Value.Trim('"');
             }
