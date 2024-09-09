@@ -60,8 +60,7 @@ namespace SnDocumentGenerator.Parser
             {
                 // MethodDeclarationSyntax -> AttributeListSyntax -> AttributeSyntax
                 var walker = new ODataOperationWalker();
-                using (Color(ConsoleColor.Cyan))
-                    walker.Visit(node.Parent.Parent);
+                walker.Visit(node.Parent.Parent);
 
                 var op = walker.Operation;
                 op.File = _path;
