@@ -14,10 +14,6 @@ namespace SnDocumentGenerator.Parser
         private string _currentAttributeName;
         public OperationInfo Operation { get; } = new();
 
-        public ODataOperationWalker(bool showAst) : base(showAst)
-        {
-        }
-
         public override void VisitMethodDeclaration(MethodDeclarationSyntax node)
         {
             // Identifier
@@ -83,7 +79,7 @@ namespace SnDocumentGenerator.Parser
             var index = 0;
             foreach (var attrArg in node.Arguments)
             {
-                var visitor = new AttributeArgumentWalker(this.ShowAst);
+                var visitor = new AttributeArgumentWalker();
                 visitor.Visit(attrArg);
                 AddParameter(visitor.Name, visitor.Value, index++);
             }

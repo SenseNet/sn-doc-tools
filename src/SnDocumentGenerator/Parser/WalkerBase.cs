@@ -15,11 +15,6 @@ namespace SnDocumentGenerator.Parser
             InitializeColors();
         }
 
-        public WalkerBase(bool showAst)
-        {
-            ShowAst = showAst;
-        }
-
         public override void Visit(SyntaxNode node)
         {
             Tabs++;

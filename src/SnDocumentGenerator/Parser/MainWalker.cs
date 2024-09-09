@@ -22,7 +22,7 @@ namespace SnDocumentGenerator.Parser
         protected readonly string _path;
         protected readonly SemanticModel _semanticModel;
 
-        public MainWalker(string path, bool showAst, SemanticModel semanticModel) : base(showAst)
+        public MainWalker(string path, SemanticModel semanticModel) : base()
         {
             _path = path;
             _semanticModel = semanticModel;
@@ -59,7 +59,7 @@ namespace SnDocumentGenerator.Parser
             else if (name == "ODataFunction" || name == "ODataAction")
             {
                 // MethodDeclarationSyntax -> AttributeListSyntax -> AttributeSyntax
-                var walker = new ODataOperationWalker(this.ShowAst);
+                var walker = new ODataOperationWalker();
                 using (Color(ConsoleColor.Cyan))
                     walker.Visit(node.Parent.Parent);
 
@@ -228,7 +228,7 @@ namespace SnDocumentGenerator.Parser
             {
                 Console.WriteLine($"SRVREG: {node.Identifier.Text,-70}");
 
-                var visitor = new ServiceRegistrationMethodVisitor(_path, ShowAst, _semanticModel);
+                var visitor = new ServiceRegistrationMethodVisitor(_path, _semanticModel);
                 visitor.Visit(node);
 
                 if(visitor.ServiceRegistrationMethod != null)

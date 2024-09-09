@@ -19,7 +19,7 @@ internal class ServiceRegistrationMethodVisitor : WalkerBase
 
     public ServiceRegistrationMethodInfo ServiceRegistrationMethod { get; private set; }
 
-    public ServiceRegistrationMethodVisitor(string path, bool showAst, SemanticModel semanticModel) : base(showAst)
+    public ServiceRegistrationMethodVisitor(string path, SemanticModel semanticModel) : base()
     {
         _path = path;
         _semanticModel = semanticModel;

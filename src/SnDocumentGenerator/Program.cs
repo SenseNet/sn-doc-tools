@@ -23,7 +23,6 @@ namespace SnDocumentGenerator
                 Input = args[0],
                 Output = args[1],
                 All = args.Contains("-all", StringComparer.OrdinalIgnoreCase),
-                ShowAst = false,
             };
             if (args.Contains("-op", StringComparer.OrdinalIgnoreCase))
                 options.FileLevel = FileLevel.Operation;

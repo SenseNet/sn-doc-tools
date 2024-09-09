@@ -28,20 +28,17 @@ namespace SnDocumentGenerator.Parser
             var serviceRegistrationMethods = new List<ServiceRegistrationMethodInfo>();
 
             var input = Path.GetFullPath(_options.Input);
-            //string rootPath;
             if (File.Exists(input))
             {
                 if (Path.GetExtension(input) != ".cs")
                     throw new NotSupportedException("Only csharp file (*.cs extension) is supported.");
-                //rootPath = Path.GetDirectoryName(input);
-                AddItemsFromFile(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null, _options.ShowAst);
+                AddItemsFromFile(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null);
             }
             else
             {
                 if (!Directory.Exists(input))
                     throw new ArgumentException("Unknown file or directory: " + input);
-                //rootPath = input.TrimEnd('\\', '/');
-                AddItemsFromDirectory(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null, _options.ShowAst);
+                AddItemsFromDirectory(input, input, operations, optionsClasses, classes, enums, serviceRegistrationMethods, null);
             }
 
             return (operations, optionsClasses, classes, enums, serviceRegistrationMethods);
@@ -51,7 +48,7 @@ namespace SnDocumentGenerator.Parser
             List<OperationInfo> operations, List<OptionsClassInfo> optionsClasses,
             Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
             List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
-            ProjectInfo currentProject, bool showAst)
+            ProjectInfo currentProject)
         {
             if (path.EndsWith("\\obj", StringComparison.OrdinalIgnoreCase))
                 return;
@@ -67,9 +64,9 @@ namespace SnDocumentGenerator.Parser
                 currentProject = CreateProject(projectPath);
 
             foreach (var directory in Directory.GetDirectories(path))
-                AddItemsFromDirectory(root, directory, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject, showAst);
+                AddItemsFromDirectory(root, directory, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject);
             foreach (var file in Directory.GetFiles(path, "*.cs"))
-                AddItemsFromFile(root, file, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject, showAst);
+                AddItemsFromFile(root, file, operations, optionsClasses, classes, enums, serviceRegistrationMethods, currentProject);
         }
 
         private ProjectInfo CreateProject(string projectPath)
@@ -142,7 +139,7 @@ namespace SnDocumentGenerator.Parser
             List<OperationInfo> operations, List<OptionsClassInfo> optionsClasses,
             Dictionary<string, ClassInfo> classes, Dictionary<string, EnumInfo> enums,
             List<ServiceRegistrationMethodInfo> serviceRegistrationMethods,
-            ProjectInfo currentProject, bool showAst)
+            ProjectInfo currentProject)
         {
             if (path.Length > root.Length)
             {
@@ -152,13 +149,10 @@ namespace SnDocumentGenerator.Parser
 
             var code = new StreamReader(path).ReadToEnd();
             var tree = CSharpSyntaxTree.ParseText(code);
-var compilation = CSharpCompilation.Create("MyCompilation", new[] { tree }, new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
-var semanticModel = compilation.GetSemanticModel(tree);
-//var root1 = tree.GetRoot();
-//var classSymbol = semanticModel.GetDeclaredSymbol(root1.DescendantNodes().OfType().First());
-//Console.WriteLine(string.Join(", ", classSymbol.AllInterfaces));
-            
-            var walker = new MainWalker(path, showAst, semanticModel);
+            var compilation = CSharpCompilation.Create("MyCompilation", new[] { tree }, new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
+            var semanticModel = compilation.GetSemanticModel(tree);
+
+            var walker = new MainWalker(path, semanticModel);
             walker.Visit(tree.GetRoot());
 
             foreach (var op in walker.Operations)
